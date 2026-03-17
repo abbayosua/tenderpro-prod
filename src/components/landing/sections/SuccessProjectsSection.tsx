@@ -1,6 +1,7 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Badge } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { MapPin, CheckCircle } from 'lucide-react';
 import { successProjects } from '@/data';
 import { formatRupiah } from '@/lib/helpers';

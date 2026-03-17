@@ -10,7 +10,7 @@
 
 - [x] ~~Mock data in helpers.ts → Move to src/data/~~ (Done)
 - [x] ~~LandingPage.tsx → Extract sections~~ (Done)
-- [ ] OwnerDashboard.tsx (~961 lines) → Extract tabs into separate components
+- [x] ~~OwnerDashboard.tsx (~961 lines) → Extract tabs into separate components~~ (Done - now 400 lines)
 - [ ] useDashboard.ts (~613 lines) → Split into domain hooks
 - [ ] page.tsx (30 useState) → Reduce state management complexity
 - [ ] RegisterModal.tsx → Extract step components
@@ -26,11 +26,14 @@
    - TestimonialsSection, SuccessProjectsSection
    - ProjectCategoriesSection, PartnersSection
    - FAQSection, CTASection, FooterSection
+3. **OwnerDashboard** - Extracted 6 tab components:
+   - OwnerProjectsTab, OwnerBidsTab, OwnerFavoritesTab
+   - OwnerTimelineTab, OwnerDocumentsTab, OwnerPaymentsTab
+   - Main file reduced from ~961 lines to 400 lines
 
-### Next: OwnerDashboard.tsx
-Extract tabs into separate components:
-- OwnerProjectsTab.tsx
-- OwnerContractorsTab.tsx
-- OwnerPaymentsTab.tsx
-- OwnerDocumentsTab.tsx
-- OwnerReportsTab.tsx
+### Next: useDashboard.ts
+Split into domain-specific hooks:
+- useOwnerDashboard.ts
+- useContractorDashboard.ts
+- useNotifications.ts
+- useFavorites.ts

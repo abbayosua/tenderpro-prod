@@ -1,0 +1,76 @@
+import { OwnerStats, Bid, Milestone, Favorite } from '@/types';
+import type { PaymentSummary } from '@/hooks/useDashboard';
+
+export interface OwnerProject {
+  id: string;
+  title: string;
+  category: string;
+  location: string;
+  budget: number;
+  status: string;
+  bidCount: number;
+  viewCount?: number;
+  bids: Bid[];
+}
+
+export interface OwnerDocument {
+  id: string;
+  name: string;
+  type: string;
+  projectId: string;
+  project: string;
+  fileSize: number;
+  fileUrl: string;
+  isApproved: boolean;
+  createdAt: Date;
+}
+
+// Shared props for tabs that need ownerStats and actions
+export interface OwnerTabsSharedProps {
+  ownerStats: OwnerStats;
+  onShowCreateProject: () => void;
+  onShowCCTV: (project: { id: string; title: string; status: string }) => void;
+  onShowProgress: (project: { id: string; title: string; category: string; budget: number }) => void;
+  onAcceptBid: (bidId: string) => void;
+  onRejectBid: (bidId: string) => void;
+  loadMilestones: (projectId: string) => void;
+}
+
+export interface OwnerProjectsTabProps extends OwnerTabsSharedProps {
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  filterStatus: string;
+  setFilterStatus: (status: string) => void;
+  milestones: Milestone[];
+}
+
+export interface OwnerBidsTabProps extends OwnerTabsSharedProps {
+  selectedBidsForCompare: string[];
+  toggleBidSelection: (bidId: string) => void;
+  onShowCompare: () => void;
+  onAddFavorite: (contractorId: string) => void;
+}
+
+export interface OwnerFavoritesTabProps {
+  favorites: Favorite[];
+  onRemoveFavorite: (favoriteId: string) => void;
+}
+
+export type OwnerTimelineTabProps = OwnerTabsSharedProps;
+
+export interface OwnerDocumentsTabProps {
+  ownerStats: OwnerStats;
+  allProjectDocuments: OwnerDocument[];
+  filterDocType: string;
+  setFilterDocType: (type: string) => void;
+  filterDocProject: string;
+  setFilterDocProject: (projectId: string) => void;
+  webcamModalOpen: boolean;
+  setWebcamModalOpen: (open: boolean) => void;
+  onDocumentUpload: (data: { name: string; type: string; fileUrl: string; fileSize: number }) => Promise<boolean>;
+}
+
+export interface OwnerPaymentsTabProps {
+  ownerStats: OwnerStats;
+  paymentSummary: PaymentSummary | null;
+}

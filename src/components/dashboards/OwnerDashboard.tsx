@@ -29,7 +29,7 @@ import {
   OwnerTimelineTab,
   OwnerDocumentsTab,
   OwnerPaymentsTab,
-} from './tabs';
+} from './owner/tabs';
 
 const chartConfig: ChartConfig = {
   primary: { label: 'Pembangunan Baru', color: 'hsl(var(--primary))' },

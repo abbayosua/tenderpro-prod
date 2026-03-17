@@ -30,6 +30,38 @@ import {
   OwnerDocumentsTab,
   OwnerPaymentsTab,
 } from './owner/tabs';
+import type { AllProjectDocument } from '@/hooks/useDashboard';
+
+// Define the props interface
+interface OwnerDashboardProps {
+  user: { id: string; name: string; verificationStatus: string; avatar?: string };
+  ownerStats: OwnerStats;
+  notifications: Notification[];
+  unreadCount: number;
+  favorites: Favorite[];
+  milestones: Milestone[];
+  progressPercent: number;
+  selectedBidsForCompare: string[];
+  chartData: ChartData | null;
+  paymentSummary: PaymentSummary | null;
+  allProjectDocuments: AllProjectDocument[];
+  onLogout: () => void;
+  onShowVerification: () => void;
+  onShowCreateProject: () => void;
+  onShowCCTV: (project: { id: string; title: string; status: string }) => void;
+  onShowProgress: (project: { id: string; title: string; category: string; budget: number }) => void;
+  onShowCompare: () => void;
+  onShowExport: () => void;
+  onAcceptBid: (bidId: string) => void;
+  onRejectBid: (bidId: string) => void;
+  onAddFavorite: (contractorId: string, notes?: string) => void;
+  onRemoveFavorite: (favoriteId: string) => void;
+  onMarkNotificationRead: (notificationId: string) => void;
+  onMarkAllRead: () => void;
+  onUpdateMilestone: (milestoneId: string, status: string, projectId?: string) => void;
+  toggleBidSelection: (bidId: string) => void;
+  loadMilestones: (projectId: string) => void;
+}
 
 const chartConfig: ChartConfig = {
   primary: { label: 'Pembangunan Baru', color: 'hsl(var(--primary))' },

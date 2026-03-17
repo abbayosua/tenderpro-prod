@@ -11,7 +11,7 @@
 - [x] ~~Mock data in helpers.ts → Move to src/data/~~ (Done)
 - [x] ~~LandingPage.tsx → Extract sections~~ (Done)
 - [x] ~~OwnerDashboard.tsx (~961 lines) → Extract tabs into separate components~~ (Done - now 400 lines)
-- [ ] useDashboard.ts (~613 lines) → Split into domain hooks
+- [ ] useDashboard.ts (~613 lines) → Split into domain hooks (Skipped - complex dependencies)
 - [ ] page.tsx (30 useState) → Reduce state management complexity
 - [ ] RegisterModal.tsx → Extract step components
 
@@ -31,9 +31,13 @@
    - OwnerTimelineTab, OwnerDocumentsTab, OwnerPaymentsTab
    - Main file reduced from ~961 lines to 400 lines
 
-### Next: useDashboard.ts
-Split into domain-specific hooks:
-- useOwnerDashboard.ts
-- useContractorDashboard.ts
-- useNotifications.ts
-- useFavorites.ts
+### Skipped
+- **useDashboard.ts** - Complex hook with many interdependent states and callbacks. 
+  Splitting would require significant refactoring of all dashboards. Current implementation works well.
+
+### Commit History
+- `f677d34` - refactor: extract OwnerDashboard tabs into separate components
+- `363773f` - fix: correct Badge and Button imports in LandingPage components
+- `de42e3c` - refactor: extract LandingPage sections into separate components
+- `e53bf56` - docs: update landing data comments for clarity
+- `cdfc02e` - refactor: move mock data from helpers.ts to src/data/

@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { useAuthStore, UserRole } from '@/lib/auth-store';
 import { defaultRegisterForm, defaultNewProject, RegisterForm, Project } from '@/types';
-import { formatRupiah, calculateMatchScore } from '@/lib/helpers';
+import { useDashboard } from '@/hooks/useDashboard';
 
 // Dashboard Components
 import { OwnerDashboard } from '@/components/dashboards/OwnerDashboard';
@@ -14,7 +14,6 @@ import { LandingPage } from '@/components/landing/LandingPage';
 // Modal Components
 import { LoginModal } from '@/components/modals/LoginModal';
 import { RegisterModal } from '@/components/modals/RegisterModal';
-import { BidModal } from '@/components/modals/BidModal';
 import { CreateProjectModal } from '@/components/modals/CreateProjectModal';
 import { VerificationModal } from '@/components/modals/VerificationModal';
 import { CCTVModal } from '@/components/modals/CCTVModal';
@@ -60,6 +59,7 @@ interface SelectedProjectForProgress {
 
 export default function TenderProApp() {
   const { user, login, logout, isLoading } = useAuthStore();
+  const dashboard = useDashboard({ user });
 
   // View state
   const [activeTab, setActiveTab] = useState('landing');
@@ -67,7 +67,6 @@ export default function TenderProApp() {
   // Modal states
   const [loginOpen, setLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
-  const [bidModalOpen, setBidModalOpen] = useState(false);
   const [createProjectOpen, setCreateProjectOpen] = useState(false);
   const [verificationOpen, setVerificationOpen] = useState(false);
   const [cctvModalOpen, setCctvModalOpen] = useState(false);
@@ -82,12 +81,6 @@ export default function TenderProApp() {
   const [registerForm, setRegisterForm] = useState<RegisterForm>(defaultRegisterForm);
   const [newProject, setNewProject] = useState(defaultNewProject);
 
-  // Bid form states
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const [bidProposal, setBidProposal] = useState('');
-  const [bidPrice, setBidPrice] = useState('');
-  const [bidDuration, setBidDuration] = useState('');
-
   // Verification states
   const [docType, setDocType] = useState('KTP');
   const [docName, setDocName] = useState('');
@@ -101,12 +94,12 @@ export default function TenderProApp() {
   const [selectedProjectForCCTV, setSelectedProjectForCCTV] = useState<SelectedProjectForCCTV | null>(null);
   const [selectedProjectForProgress, setSelectedProjectForProgress] = useState<SelectedProjectForProgress | null>(null);
 
-  // Data states
+  // Data states for landing page
   const [contractors, setContractors] = useState<SelectedContractor[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [documents, setDocuments] = useState<Array<{id: string; type: string; name: string; verified: boolean}>>([]);
 
-  // Load initial data
+  // Load initial data for landing page
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -192,35 +185,6 @@ export default function TenderProApp() {
     toast.success('Registrasi berhasil! Silakan login.');
   };
 
-  const handleBid = async () => {
-    if (!selectedProject || !user) return;
-    try {
-      const res = await fetch('/api/bids', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId: selectedProject.id,
-          contractorId: user.id,
-          proposal: bidProposal,
-          price: parseFloat(bidPrice),
-          duration: parseInt(bidDuration),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success('Penawaran berhasil dikirim!');
-        setBidModalOpen(false);
-        setBidProposal('');
-        setBidPrice('');
-        setBidDuration('');
-      } else {
-        toast.error(data.error || 'Gagal mengirim penawaran');
-      }
-    } catch {
-      toast.error('Terjadi kesalahan');
-    }
-  };
-
   const handleCreateProject = async () => {
     if (!user || !newProject.title || !newProject.budget) {
       toast.error('Mohon lengkapi data proyek');
@@ -243,6 +207,7 @@ export default function TenderProApp() {
         toast.success('Proyek berhasil dibuat!');
         setCreateProjectOpen(false);
         setNewProject(defaultNewProject);
+        dashboard.loadDashboardStats();
       } else {
         toast.error(data.error || 'Gagal membuat proyek');
       }
@@ -266,7 +231,6 @@ export default function TenderProApp() {
       });
       const data = await res.json();
       if (data.success) {
-        // Reload documents
         const docRes = await fetch(`/api/documents?userId=${user.id}`);
         const docData = await docRes.json();
         setDocuments(docData.documents || []);
@@ -282,38 +246,46 @@ export default function TenderProApp() {
     }
   };
 
-  // Render based on active tab and user role
-  if (activeTab === 'dashboard' && user?.role === 'OWNER') {
-    // For now, show a simplified owner dashboard using existing components
+  // Render Owner Dashboard with real data
+  if (activeTab === 'dashboard' && user?.role === 'OWNER' && dashboard.ownerStats) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <header className="bg-white border-b sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-slate-800">TenderPro</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="font-medium">{user.name}</p>
-                <p className="text-sm text-slate-500">Pemilik Proyek</p>
-              </div>
-              <Button variant="outline" onClick={handleLogout}>Keluar</Button>
-            </div>
-          </div>
-        </header>
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <Card className="mb-6">
-            <CardContent className="p-6 text-center">
-              <h2 className="text-2xl font-bold mb-2">Owner Dashboard</h2>
-              <p className="text-slate-500">Dashboard lengkap sedang dalam pengembangan. Silakan gunakan fitur yang tersedia.</p>
-              <div className="flex gap-4 justify-center mt-4">
-                <Button onClick={() => setCreateProjectOpen(true)}>Buat Proyek</Button>
-                <Button variant="outline" onClick={() => setVerificationOpen(true)}>Verifikasi Akun</Button>
-                <Button variant="outline" onClick={() => setExportModalOpen(true)}>Export Laporan</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <>
+        <OwnerDashboard
+          user={user}
+          ownerStats={dashboard.ownerStats}
+          notifications={dashboard.notifications}
+          unreadCount={dashboard.unreadCount}
+          favorites={dashboard.favorites}
+          milestones={dashboard.milestones}
+          progressPercent={dashboard.progressPercent}
+          selectedBidsForCompare={selectedBidsForCompare}
+          chartData={dashboard.chartData}
+          paymentSummary={dashboard.paymentSummary}
+          allProjectDocuments={dashboard.allProjectDocuments}
+          onLogout={handleLogout}
+          onShowVerification={() => setVerificationOpen(true)}
+          onShowCreateProject={() => setCreateProjectOpen(true)}
+          onShowCCTV={(project) => {
+            setSelectedProjectForCCTV(project);
+            setCctvModalOpen(true);
+          }}
+          onShowProgress={(project) => {
+            setSelectedProjectForProgress(project);
+            dashboard.loadMilestones(project.id);
+            setProgressModalOpen(true);
+          }}
+          onShowCompare={() => setCompareModalOpen(true)}
+          onShowExport={() => setExportModalOpen(true)}
+          onAcceptBid={dashboard.handleAcceptBid}
+          onRejectBid={dashboard.handleRejectBid}
+          onAddFavorite={dashboard.handleAddFavorite}
+          onRemoveFavorite={dashboard.handleRemoveFavorite}
+          onMarkNotificationRead={dashboard.handleMarkNotificationRead}
+          onMarkAllRead={dashboard.handleMarkAllRead}
+          onUpdateMilestone={dashboard.handleUpdateMilestone}
+          toggleBidSelection={toggleBidSelection}
+          loadMilestones={dashboard.loadMilestones}
+        />
         <CreateProjectModal
           open={createProjectOpen}
           onOpenChange={setCreateProjectOpen}
@@ -335,6 +307,25 @@ export default function TenderProApp() {
             setVerificationOpen(false);
           }}
         />
+        <CCTVModal
+          open={cctvModalOpen}
+          onOpenChange={setCctvModalOpen}
+          project={selectedProjectForCCTV}
+        />
+        <ProgressModal
+          open={progressModalOpen}
+          onOpenChange={setProgressModalOpen}
+          project={selectedProjectForProgress}
+          milestones={dashboard.milestones}
+          progressPercent={dashboard.progressPercent}
+          onUpdateMilestone={dashboard.handleUpdateMilestone}
+        />
+        <CompareBidsModal
+          open={compareModalOpen}
+          onOpenChange={setCompareModalOpen}
+          selectedBidIds={selectedBidsForCompare}
+          onAcceptBid={dashboard.handleAcceptBid}
+        />
         <ExportModal
           open={exportModalOpen}
           onOpenChange={setExportModalOpen}
@@ -342,39 +333,24 @@ export default function TenderProApp() {
           setFormat={setExportFormat}
           onExport={() => {}}
         />
-      </div>
+      </>
     );
   }
 
-  if (activeTab === 'dashboard' && user?.role === 'CONTRACTOR') {
+  // Render Contractor Dashboard with real data
+  if (activeTab === 'dashboard' && user?.role === 'CONTRACTOR' && dashboard.contractorStats) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <header className="bg-white border-b sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold text-slate-800">TenderPro</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="font-medium">{user.name}</p>
-                <p className="text-sm text-slate-500">Kontraktor</p>
-              </div>
-              <Button variant="outline" onClick={handleLogout}>Keluar</Button>
-            </div>
-          </div>
-        </header>
-        <div className="max-w-7xl mx-auto px-4 py-8">
-          <Card className="mb-6">
-            <CardContent className="p-6 text-center">
-              <h2 className="text-2xl font-bold mb-2">Kontraktor Dashboard</h2>
-              <p className="text-slate-500">Dashboard lengkap sedang dalam pengembangan. Silakan gunakan fitur yang tersedia.</p>
-              <div className="flex gap-4 justify-center mt-4">
-                <Button onClick={() => setVerificationOpen(true)}>Verifikasi Akun</Button>
-                <Button variant="outline" onClick={() => toast.info('Fitur tender dalam pengembangan')}>Cari Proyek</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <>
+        <ContractorDashboard
+          user={user}
+          contractorStats={dashboard.contractorStats}
+          onLogout={handleLogout}
+          onShowVerification={() => setVerificationOpen(true)}
+          onShowBidModal={(project) => {
+            // For contractor to bid on projects - can be implemented later
+            toast.info('Fitur bid proyek akan segera tersedia');
+          }}
+        />
         <VerificationModal
           open={verificationOpen}
           onOpenChange={setVerificationOpen}
@@ -389,7 +365,7 @@ export default function TenderProApp() {
             setVerificationOpen(false);
           }}
         />
-      </div>
+      </>
     );
   }
 
@@ -434,7 +410,3 @@ export default function TenderProApp() {
     </>
   );
 }
-
-// Import missing components
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';

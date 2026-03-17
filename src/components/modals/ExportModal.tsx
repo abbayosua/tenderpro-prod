@@ -9,6 +9,7 @@ import { Download, FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 interface ExportModalProps {
   open: boolean;
@@ -64,23 +65,50 @@ export function ExportModal({
   };
 
   const generateExcel = (data: Array<{ title: string; value: string | number }>, title: string, subtitle: string) => {
-    // Create CSV content (Excel compatible)
-    const rows = [
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    
+    // Prepare data with title and subtitle
+    const wsData: (string | number)[][] = [
       [title],
       [subtitle],
       [''],
-      ['Judul', 'Nilai'],
-      ...data.map(row => [row.title, String(row.value)]),
+      ['Kriteria', 'Nilai'],
     ];
-
-    const csvContent = rows.map(row => row.join(',')).join('\n');
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    
+    // Add data rows
+    data.forEach(row => {
+      if (row.title && !row.title.startsWith('---')) {
+        wsData.push([row.title, String(row.value)]);
+      }
+    });
+    
+    // Add footer
+    wsData.push(['']);
+    wsData.push([`Diekspor pada: ${new Date().toLocaleString('id-ID')}`]);
+    wsData.push(['TenderPro - Platform Tender Konstruksi Terpercaya']);
+    
+    // Create worksheet
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 40 }, // Kriteria column
+      { wch: 50 }, // Nilai column
+    ];
+    
+    // Style the header row (row 4, which is index 3 in 0-based)
+    const headerCell1 = ws['A4'];
+    const headerCell2 = ws['B4'];
+    if (headerCell1) headerCell1.s = { font: { bold: true }, fill: { fgColor: { rgb: '4F46E5' } } };
+    if (headerCell2) headerCell2.s = { font: { bold: true }, fill: { fgColor: { rgb: '4F46E5' } } };
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(wb, ws, 'Laporan');
+    
+    // Generate and download file
+    const fileName = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
   };
 
   const generatePDF = (data: Array<{ title: string; value: string | number }>, title: string, subtitle: string) => {

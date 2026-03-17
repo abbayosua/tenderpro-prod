@@ -49,6 +49,10 @@ export interface OwnerBidsTabProps extends OwnerTabsSharedProps {
   toggleBidSelection: (bidId: string) => void;
   onShowCompare: () => void;
   onAddFavorite: (contractorId: string) => void;
+  filterBidProject: string;
+  setFilterBidProject: (projectId: string) => void;
+  sortBidsBy: 'newest' | 'lowest' | 'rating';
+  setSortBidsBy: (sort: 'newest' | 'lowest' | 'rating') => void;
 }
 
 export interface OwnerFavoritesTabProps {

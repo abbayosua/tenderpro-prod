@@ -85,6 +85,8 @@ export function OwnerDashboard({
   const [filterDocProject, setFilterDocProject] = useState('all');
   const [webcamModalOpen, setWebcamModalOpen] = useState(false);
   const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [filterBidProject, setFilterBidProject] = useState('all');
+  const [sortBidsBy, setSortBidsBy] = useState<'newest' | 'lowest' | 'rating'>('newest');
 
   
   // Handle document upload from webcam
@@ -334,6 +336,10 @@ export function OwnerDashboard({
               onShowProgress={onShowProgress}
               onShowCreateProject={onShowCreateProject}
               loadMilestones={loadMilestones}
+              filterBidProject={filterBidProject}
+              setFilterBidProject={setFilterBidProject}
+              sortBidsBy={sortBidsBy}
+              setSortBidsBy={setSortBidsBy}
             />
           </TabsContent>
 

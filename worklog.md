@@ -51,3 +51,33 @@ Stage Summary:
 - HeroCanvas animation component added with mouse-following wave effect
 - All emerald colors replaced with primary theme colors
 - Application passes lint checks with no errors
+
+---
+## Task ID: 1 - Bid Sorting Implementation
+### Work Task
+Implement bid sorting functionality in the TenderPro project with support for sorting by newest, lowest price, and highest rating.
+
+### Work Summary
+Successfully implemented bid sorting functionality with the following changes:
+
+1. **Updated `types.ts`**: Added new props to `OwnerBidsTabProps`:
+   - `filterBidProject: string` - for filtering bids by project
+   - `setFilterBidProject: (projectId: string) => void` - setter for project filter
+   - `sortBidsBy: 'newest' | 'lowest' | 'rating'` - sort mode selection
+   - `setSortBidsBy: (sort: 'newest' | 'lowest' | 'rating') => void` - setter for sort mode
+
+2. **Updated `OwnerBidsTab.tsx`**: 
+   - Accepted new props for filtering and sorting
+   - Made Select components controlled (using `value` and `onValueChange`)
+   - Implemented `useMemo` hook to compute filtered and sorted bids
+   - Sort by newest: sorts by `bid.createdAt` descending
+   - Sort by lowest: sorts by `bid.price` ascending
+   - Sort by rating: sorts by `bid.contractor.rating` descending
+   - Refactored to include `projectData` directly in each bid object for cleaner rendering
+
+3. **Updated `OwnerDashboard.tsx`**:
+   - Added state for `filterBidProject` (default: 'all')
+   - Added state for `sortBidsBy` (default: 'newest')
+   - Passed these props to `OwnerBidsTab` component
+
+All code passes lint checks with no errors.

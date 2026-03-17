@@ -11,7 +11,8 @@ import {
   ChevronRight, Mail, Phone
 } from 'lucide-react';
 import { Contractor, Project } from '@/types';
-import { formatRupiah, testimonialData, successProjectData, projectCategoryData, partnerData, faqData } from '@/lib/helpers';
+import { formatRupiah } from '@/lib/helpers';
+import { testimonialData, successProjectData, projectCategoryData, partnerData, faqData } from '@/data';
 import { BackgroundPaths } from '@/components/background-paths';
 
 interface LandingPageProps {

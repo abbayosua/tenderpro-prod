@@ -63,6 +63,12 @@ export interface OwnerStats {
   openProjects: number;
   completedProjects: number;
   totalPendingBids: number;
+  trends?: {
+    totalProjects: { value: string; isUp: boolean };
+    activeProjects: { value: string; isUp: boolean };
+    openProjects: { value: string; isUp: boolean };
+    pendingBids: { value: string; isUp: boolean };
+  };
   projects: Array<{
     id: string;
     title: string;

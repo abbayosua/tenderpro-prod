@@ -179,12 +179,113 @@ export async function GET(request: NextRequest) {
         },
       });
 
+      // Calculate trends (compare current month vs previous month)
+      const now = new Date();
+      const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+      // Current month projects count
+      const currentMonthProjects = await db.project.count({
+        where: {
+          ownerId: userId,
+          createdAt: { gte: startOfCurrentMonth },
+        },
+      });
+
+      // Previous month projects count
+      const previousMonthProjects = await db.project.count({
+        where: {
+          ownerId: userId,
+          createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth },
+        },
+      });
+
+      // Current month active projects (projects that became active this month)
+      const currentMonthActive = await db.project.count({
+        where: {
+          ownerId: userId,
+          status: 'IN_PROGRESS',
+          updatedAt: { gte: startOfCurrentMonth },
+        },
+      });
+
+      // Previous month active projects
+      const previousMonthActive = await db.project.count({
+        where: {
+          ownerId: userId,
+          status: 'IN_PROGRESS',
+          updatedAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth },
+        },
+      });
+
+      // Current month open projects
+      const currentMonthOpen = await db.project.count({
+        where: {
+          ownerId: userId,
+          status: 'OPEN',
+          createdAt: { gte: startOfCurrentMonth },
+        },
+      });
+
+      // Previous month open projects
+      const previousMonthOpen = await db.project.count({
+        where: {
+          ownerId: userId,
+          status: 'OPEN',
+          createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth },
+        },
+      });
+
+      // Current month pending bids
+      const currentMonthPendingBids = await db.bid.count({
+        where: {
+          project: { ownerId: userId },
+          status: 'PENDING',
+          createdAt: { gte: startOfCurrentMonth },
+        },
+      });
+
+      // Previous month pending bids
+      const previousMonthPendingBids = await db.bid.count({
+        where: {
+          project: { ownerId: userId },
+          status: 'PENDING',
+          createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth },
+        },
+      });
+
+      // Calculate percentage changes
+      const calculateTrend = (current: number, previous: number): { value: string; isUp: boolean } => {
+        if (previous === 0) {
+          // If previous was 0, show current as growth or 0
+          return { value: current > 0 ? `+${current}` : '0%', isUp: current > 0 };
+        }
+        const change = ((current - previous) / previous) * 100;
+        const roundedChange = Math.round(change);
+        return {
+          value: `${change >= 0 ? '+' : ''}${roundedChange}%`,
+          isUp: change >= 0,
+        };
+      };
+
+      const totalProjectsTrend = calculateTrend(currentMonthProjects, previousMonthProjects);
+      const activeProjectsTrend = calculateTrend(currentMonthActive, previousMonthActive);
+      const openProjectsTrend = calculateTrend(currentMonthOpen, previousMonthOpen);
+      const pendingBidsTrend = calculateTrend(currentMonthPendingBids, previousMonthPendingBids);
+
       dashboardData = {
         totalProjects,
         activeProjects,
         openProjects,
         completedProjects,
         totalPendingBids,
+        // Trends
+        trends: {
+          totalProjects: totalProjectsTrend,
+          activeProjects: activeProjectsTrend,
+          openProjects: openProjectsTrend,
+          pendingBids: pendingBidsTrend,
+        },
         projects: projects.map((p) => ({
           id: p.id,
           title: p.title,

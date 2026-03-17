@@ -211,10 +211,38 @@ export function OwnerDashboard({
 
         {/* Stats Cards */}
         <div className="grid md:grid-cols-4 gap-4 mb-6">
-          <StatsCard label="Total Proyek" value={ownerStats.totalProjects} icon={FolderOpen} trend="+12%" trendUp color="primary" />
-          <StatsCard label="Proyek Aktif" value={ownerStats.activeProjects} icon={Building2} trend="+5%" trendUp color="blue" />
-          <StatsCard label="Tender Terbuka" value={ownerStats.openProjects} icon={FileText} trend="-2%" trendUp={false} color="yellow" />
-          <StatsCard label="Penawaran Pending" value={ownerStats.totalPendingBids} icon={Clock} trend="+8%" trendUp color="purple" />
+          <StatsCard
+            label="Total Proyek"
+            value={ownerStats.totalProjects}
+            icon={FolderOpen}
+            trend={ownerStats.trends?.totalProjects?.value || '+0%'}
+            trendUp={ownerStats.trends?.totalProjects?.isUp ?? true}
+            color="primary"
+          />
+          <StatsCard
+            label="Proyek Aktif"
+            value={ownerStats.activeProjects}
+            icon={Building2}
+            trend={ownerStats.trends?.activeProjects?.value || '+0%'}
+            trendUp={ownerStats.trends?.activeProjects?.isUp ?? true}
+            color="blue"
+          />
+          <StatsCard
+            label="Tender Terbuka"
+            value={ownerStats.openProjects}
+            icon={FileText}
+            trend={ownerStats.trends?.openProjects?.value || '+0%'}
+            trendUp={ownerStats.trends?.openProjects?.isUp ?? false}
+            color="yellow"
+          />
+          <StatsCard
+            label="Penawaran Pending"
+            value={ownerStats.totalPendingBids}
+            icon={Clock}
+            trend={ownerStats.trends?.pendingBids?.value || '+0%'}
+            trendUp={ownerStats.trends?.pendingBids?.isUp ?? true}
+            color="purple"
+          />
         </div>
 
         {/* Quick Actions */}

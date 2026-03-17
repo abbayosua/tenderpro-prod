@@ -418,9 +418,10 @@ export function OwnerDashboard({
 
         {/* Webcam Upload Modal */}
         <WebcamUploadModal
-          isOpen={webcamModalOpen}
-          onClose={() => setWebcamModalOpen(false)}
+          open={webcamModalOpen}
+          onOpenChange={setWebcamModalOpen}
           onUpload={handleDocumentUpload}
+          projects={ownerStats.projects}
         />
 
         {/* Chat Modal */}

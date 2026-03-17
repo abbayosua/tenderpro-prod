@@ -42,6 +42,8 @@ export interface AllProjectDocument {
   fileUrl: string;
   isApproved: boolean;
   createdAt: Date;
+  viewCount: number;
+  downloadCount: number;
 }
 
 interface UseDashboardProps {

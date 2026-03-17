@@ -55,6 +55,8 @@ export async function GET(request: NextRequest) {
       isApproved: doc.isApproved,
       approvedAt: doc.approvedAt,
       createdAt: doc.createdAt,
+      viewCount: doc.viewCount || 0,
+      downloadCount: doc.downloadCount || 0,
     }));
 
     return NextResponse.json({ documents: formattedDocs });

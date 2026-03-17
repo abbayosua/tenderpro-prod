@@ -23,6 +23,8 @@ export interface OwnerDocument {
   fileUrl: string;
   isApproved: boolean;
   createdAt: Date;
+  viewCount?: number;
+  downloadCount?: number;
 }
 
 // Shared props for tabs that need ownerStats and actions

@@ -318,6 +318,9 @@ model ProjectDocument {
   fileSize          Float    // in KB
   description       String?  @db.Text
   
+  viewCount         Int      @default(0)  // Track document views
+  downloadCount     Int      @default(0)  // Track document downloads
+  
   isApproved        Boolean  @default(false)
   approvedAt        DateTime?
   approvedBy        String?

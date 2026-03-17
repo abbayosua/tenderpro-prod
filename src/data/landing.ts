@@ -1,6 +1,7 @@
 /**
- * Landing page mock data
- * Note: In production, this data should come from the database/API
+ * Landing page static data for TenderPro
+ * Contains testimonials, success projects, categories, partners, and FAQ
+ * Note: In production, this data can be moved to database/API for dynamic management
  */
 
 export interface Testimonial {

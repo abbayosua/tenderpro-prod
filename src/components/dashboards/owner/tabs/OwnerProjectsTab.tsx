@@ -133,7 +133,7 @@ export function OwnerProjectsTab({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4 text-sm text-slate-500">
                   <span className="flex items-center gap-1"><FileText className="h-4 w-4" /> {project.bidCount} Penawaran</span>
-                  <span className="flex items-center gap-1"><Eye className="h-4 w-4" /> views</span>
+                  <span className="flex items-center gap-1"><Eye className="h-4 w-4" /> {project.viewCount || 0}</span>
                 </div>
                 <Button variant="ghost" size="sm" onClick={(e) => {
                   e.stopPropagation();

@@ -9,7 +9,7 @@ export interface OwnerProject {
   budget: number;
   status: string;
   bidCount: number;
-  viewCount?: number;
+  viewCount: number;
   bids: Bid[];
 }
 

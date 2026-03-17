@@ -170,3 +170,45 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+// PUT - Increment view count for a project
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { projectId, action } = body;
+
+    if (!projectId) {
+      return NextResponse.json(
+        { error: 'Project ID diperlukan' },
+        { status: 400 }
+      );
+    }
+
+    // If action is 'increment_view', increment the view count
+    if (action === 'increment_view') {
+      const project = await db.project.update({
+        where: { id: projectId },
+        data: {
+          viewCount: { increment: 1 },
+        },
+        select: { id: true, viewCount: true },
+      });
+
+      return NextResponse.json({ 
+        success: true, 
+        viewCount: project.viewCount 
+      });
+    }
+
+    return NextResponse.json(
+      { error: 'Aksi tidak valid' },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('Update project error:', error);
+    return NextResponse.json(
+      { error: 'Terjadi kesalahan server' },
+      { status: 500 }
+    );
+  }
+}

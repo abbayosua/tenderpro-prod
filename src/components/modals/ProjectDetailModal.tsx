@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,7 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   MapPin, DollarSign, Calendar, Clock, FileText, Building2,
-  CheckCircle, User, Phone, Mail, ChevronRight
+  CheckCircle, User, Phone, Mail, ChevronRight, Eye
 } from 'lucide-react';
 import { formatRupiah, getStatusColor, getStatusLabel } from '@/lib/helpers';
 
@@ -53,6 +54,30 @@ export function ProjectDetailModal({
   onBid,
   onChat,
 }: ProjectDetailModalProps) {
+  const hasTrackedView = useRef(false);
+
+  // Track view when modal opens with a project
+  useEffect(() => {
+    if (open && project && !hasTrackedView.current) {
+      // Track view on server
+      fetch('/api/projects', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: project.id,
+          action: 'increment_view',
+        }),
+      }).catch(err => console.error('Failed to track view:', err));
+      
+      hasTrackedView.current = true;
+    }
+    
+    // Reset tracking when modal closes
+    if (!open) {
+      hasTrackedView.current = false;
+    }
+  }, [open, project]);
+
   if (!project) return null;
 
   return (
@@ -171,14 +196,17 @@ export function ProjectDetailModal({
               </div>
             </div>
 
-            {/* Project Timeline */}
-            <div className="text-xs text-slate-400">
+            {/* Project Timeline & Stats */}
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t">
               <p>Proyek dibuat: {new Date(project.createdAt).toLocaleDateString('id-ID', {
                 year: 'numeric',
                 month: 'long',
                 day: 'numeric'
               })}</p>
-              <p>Dilihat {project.viewCount} kali</p>
+              <div className="flex items-center gap-1">
+                <Eye className="h-3 w-3" />
+                <span>{project.viewCount} dilihat</span>
+              </div>
             </div>
           </div>
         </ScrollArea>

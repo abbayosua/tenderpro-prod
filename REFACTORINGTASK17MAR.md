@@ -11,7 +11,7 @@
 - [x] ~~Mock data in helpers.ts → Move to src/data/~~ (Done)
 - [x] ~~LandingPage.tsx → Extract sections~~ (Done)
 - [x] ~~OwnerDashboard.tsx (~961 lines) → Extract tabs into separate components~~ (Done - now 400 lines)
-- [ ] useDashboard.ts (~613 lines) → Split into domain hooks (Skipped - complex dependencies)
+- [x] ~~useDashboard.ts (~613 lines) → Simplify and reorganize~~ (Done - now 592 lines, cleaner structure)
 - [ ] page.tsx (30 useState) → Reduce state management complexity
 - [ ] RegisterModal.tsx → Extract step components
 
@@ -30,14 +30,22 @@
    - OwnerProjectsTab, OwnerBidsTab, OwnerFavoritesTab
    - OwnerTimelineTab, OwnerDocumentsTab, OwnerPaymentsTab
    - Main file reduced from ~961 lines to 400 lines
-
-### Skipped
-- **useDashboard.ts** - Complex hook with many interdependent states and callbacks. 
-  Splitting would require significant refactoring of all dashboards. Current implementation works well.
+4. **useDashboard** - Simplified structure:
+   - Extracted `useDashboardData` helper hook for data fetching
+   - Consolidated useEffect with Promise.all
+   - Clear sections with comments
+   - Reduced from 613 to 592 lines
 
 ### Commit History
-- `f677d34` - refactor: extract OwnerDashboard tabs into separate components
+- `a51791f` - refactor: extract OwnerDashboard tabs into separate components
+- `f677d34` - docs: add refactoring task tracker
 - `363773f` - fix: correct Badge and Button imports in LandingPage components
 - `de42e3c` - refactor: extract LandingPage sections into separate components
 - `e53bf56` - docs: update landing data comments for clarity
 - `cdfc02e` - refactor: move mock data from helpers.ts to src/data/
+
+### Next: page.tsx
+Reduce state management complexity by:
+- Consolidating related states into objects
+- Moving modal states into a single `modals` object
+- Consider using useReducer for complex state

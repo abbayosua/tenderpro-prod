@@ -6,7 +6,8 @@ import { formatRupiah } from '@/lib/helpers';
 import type { OwnerPaymentsTabProps } from './types';
 
 export function OwnerPaymentsTab({ ownerStats, paymentSummary }: OwnerPaymentsTabProps) {
-  const payments = ownerStats.projects.flatMap(p => 
+  const projects = ownerStats?.projects ?? [];
+  const payments = projects.flatMap(p => 
     (p.milestones || []).flatMap(m => 
       (m.payments || []).map(pay => ({
         ...pay,

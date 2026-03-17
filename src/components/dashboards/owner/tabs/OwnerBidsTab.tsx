@@ -20,10 +20,12 @@ export function OwnerBidsTab({
   sortBidsBy,
   setSortBidsBy,
 }: OwnerBidsTabProps) {
+  const projects = ownerStats?.projects ?? [];
+
   // Get all bids with project info, then filter and sort
   const filteredAndSortedBids = useMemo(() => {
     // Get all bids from projects that are OPEN
-    let bids = ownerStats.projects
+    let bids = projects
       .filter(p => p.status === 'OPEN' && p.bids.length > 0)
       .flatMap(project => 
         project.bids.map(bid => ({
@@ -51,7 +53,7 @@ export function OwnerBidsTab({
     }
 
     return bids;
-  }, [ownerStats.projects, filterBidProject, sortBidsBy]);
+  }, [projects, filterBidProject, sortBidsBy]);
 
   return (
     <Card>
@@ -64,7 +66,7 @@ export function OwnerBidsTab({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Proyek</SelectItem>
-                {ownerStats.projects.filter(p => p.status === 'OPEN').map(p => (
+                {projects.filter(p => p.status === 'OPEN').map(p => (
                   <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                 ))}
               </SelectContent>

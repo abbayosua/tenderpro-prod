@@ -10,6 +10,9 @@ export function OwnerTimelineTab({
   onShowProgress,
   loadMilestones,
 }: OwnerTimelineTabProps) {
+  const projects = ownerStats?.projects ?? [];
+  const activeOrCompletedProjects = projects.filter(p => p.status === 'IN_PROGRESS' || p.status === 'COMPLETED');
+
   return (
     <Card>
       <CardHeader>
@@ -20,13 +23,13 @@ export function OwnerTimelineTab({
         <CardDescription>Pantau progress dan milestone semua proyek Anda</CardDescription>
       </CardHeader>
       <CardContent className="p-6">
-        {ownerStats.projects.filter(p => p.status === 'IN_PROGRESS' || p.status === 'COMPLETED').length === 0 ? (
+        {activeOrCompletedProjects.length === 0 ? (
           <div className="text-center py-8 text-slate-500">
             <p>Tidak ada proyek yang sedang berjalan atau selesai</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {ownerStats.projects.filter(p => p.status === 'IN_PROGRESS' || p.status === 'COMPLETED').map((project) => (
+            {activeOrCompletedProjects.map((project) => (
               <Card key={project.id} className="border-l-4 border-l-primary">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-4">

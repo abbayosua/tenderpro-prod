@@ -27,7 +27,8 @@ export function OwnerDocumentsTab({
 }: OwnerDocumentsTabProps) {
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
-  const [documents, setDocuments] = useState<OwnerDocument[]>(allProjectDocuments);
+  const [documents, setDocuments] = useState<OwnerDocument[]>(allProjectDocuments ?? []);
+  const projects = ownerStats?.projects ?? [];
 
   const filteredDocuments = documents.filter(doc => {
     if (filterDocType !== 'all' && doc.type !== filterDocType) return false;
@@ -96,7 +97,7 @@ export function OwnerDocumentsTab({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Semua Proyek</SelectItem>
-                {ownerStats.projects.map(p => (
+                {projects.map(p => (
                   <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
                 ))}
               </SelectContent>

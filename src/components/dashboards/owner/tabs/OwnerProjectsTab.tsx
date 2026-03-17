@@ -18,7 +18,8 @@ export function OwnerProjectsTab({
   onRejectBid,
   loadMilestones,
 }: OwnerProjectsTabProps) {
-  const filteredProjects = ownerStats.projects
+  const projects = ownerStats?.projects ?? [];
+  const filteredProjects = projects
     .filter(project => filterStatus === 'all' || project.status === filterStatus)
     .filter(project => searchQuery === '' || project.title.toLowerCase().includes(searchQuery.toLowerCase()));
 

@@ -120,6 +120,9 @@ export function OwnerDashboard({
   const [filterBidProject, setFilterBidProject] = useState('all');
   const [sortBidsBy, setSortBidsBy] = useState<'newest' | 'lowest' | 'rating'>('newest');
 
+  // Safe access to projects array
+  const projects = ownerStats?.projects ?? [];
+
   
   // Handle document upload from webcam
   const handleDocumentUpload = async (data: { name: string; type: string; fileUrl: string; fileSize: number }) => {
@@ -128,7 +131,7 @@ export function OwnerDashboard({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          projectId: filterDocProject !== 'all' ? filterDocProject : ownerStats.projects[0]?.id,
+          projectId: filterDocProject !== 'all' ? filterDocProject : projects[0]?.id,
           uploadedBy: user.id,
           name: data.name,
           type: data.type,
@@ -195,7 +198,7 @@ export function OwnerDashboard({
 
   // Calculate real progress for each project
   const getProjectProgress = (projectId: string) => {
-    const project = ownerStats.projects.find(p => p.id === projectId);
+    const project = projects.find(p => p.id === projectId);
     if (!project) return 0;
     if (project.status === 'COMPLETED') return 100;
     if (project.status === 'IN_PROGRESS') {
@@ -292,7 +295,7 @@ export function OwnerDashboard({
             <BarChart3 className="h-4 w-4 mr-2" /> Laporan
           </Button>
           <Button variant="outline" onClick={() => {
-            const firstInProgress = ownerStats.projects.find(p => p.status === 'IN_PROGRESS');
+            const firstInProgress = projects.find(p => p.status === 'IN_PROGRESS');
             if (firstInProgress) {
               onShowCCTV({ id: firstInProgress.id, title: firstInProgress.title, status: firstInProgress.status });
             } else {
@@ -453,7 +456,7 @@ export function OwnerDashboard({
           open={webcamModalOpen}
           onOpenChange={setWebcamModalOpen}
           onUpload={handleDocumentUpload}
-          projects={ownerStats.projects}
+          projects={projects}
         />
 
         {/* Chat Modal */}

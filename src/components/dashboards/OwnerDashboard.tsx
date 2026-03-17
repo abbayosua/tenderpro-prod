@@ -13,6 +13,7 @@ import {
   Video, Flag, FolderOpen, Search, Scale, Heart, Zap, Trash2, Download, Calendar,
   MessageSquare, Bell, X, User, LogOut
 } from 'lucide-react';
+import { ChatModal } from '@/components/modals/ChatModal';
 import { toast } from 'sonner';
 import { OwnerStats, Milestone, Favorite, Notification, Project } from '@/types';
 import { formatRupiah, getStatusColor, getStatusLabel } from '@/lib/helpers';
@@ -83,6 +84,7 @@ export function OwnerDashboard({
   const [filterDocType, setFilterDocType] = useState('all');
   const [filterDocProject, setFilterDocProject] = useState('all');
   const [webcamModalOpen, setWebcamModalOpen] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
 
   
   // Handle document upload from webcam
@@ -188,10 +190,7 @@ export function OwnerDashboard({
               onMarkRead={onMarkNotificationRead}
               onMarkAllRead={onMarkAllRead}
             />
-            <Button variant="ghost" size="icon" className="relative">
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon" className="relative">
+            <Button variant="ghost" size="icon" className="relative" onClick={() => setChatModalOpen(true)}>
               <MessageSquare className="h-5 w-5" />
             </Button>
             <div className="text-right">
@@ -388,6 +387,13 @@ export function OwnerDashboard({
           isOpen={webcamModalOpen}
           onClose={() => setWebcamModalOpen(false)}
           onUpload={handleDocumentUpload}
+        />
+
+        {/* Chat Modal */}
+        <ChatModal
+          open={chatModalOpen}
+          onOpenChange={setChatModalOpen}
+          currentUser={{ id: user.id, name: user.name, avatar: user.avatar }}
         />
       </div>
 

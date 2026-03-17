@@ -4,322 +4,436 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { MessageSquare, Send, ArrowLeft, User } from 'lucide-react';
-import { io, Socket } from 'socket.io-client';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import {
+  MessageSquare, Send, ArrowLeft, User, Building2, Loader2, Search
+} from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { toast } from 'sonner';
+import { formatDistanceToNow } from 'date-fns';
+import { id } from 'date-fns/locale';
+
+interface User {
+  id: string;
+  name: string;
+  avatar: string | null;
+  role: string;
+}
 
 interface Message {
   id: string;
-  senderId: string;
-  senderName: string;
-  receiverId: string;
-  content: string;
-  timestamp: Date;
   conversationId: string;
+  senderId: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  sender?: User;
 }
 
 interface Conversation {
   id: string;
-  participants: string[];
-  projectId?: string;
-  projectName?: string;
-  lastMessage?: Message;
-  unreadCount: Record<string, number>;
+  otherUser: User;
+  project?: { id: string; title: string } | null;
+  lastMessage?: string;
+  lastMessageAt: string;
+  unreadCount: number;
 }
 
 interface ChatModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  userId: string;
-  userName: string;
-  recipientId?: string;
-  recipientName?: string;
+  currentUser: { id: string; name: string; avatar?: string | null };
+  // Optional: Start chat with specific user
+  startWithUser?: { id: string; name: string } | null;
   projectId?: string;
-  projectName?: string;
 }
 
 export function ChatModal({
   open,
   onOpenChange,
-  userId,
-  userName,
-  recipientId,
-  recipientName,
+  currentUser,
+  startWithUser,
   projectId,
-  projectName,
 }: ChatModalProps) {
-  const socketRef = useRef<Socket | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isConnected, setIsConnected] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Initialize socket connection
-  useEffect(() => {
-    if (!open) return;
+  // Fetch conversations
+  const fetchConversations = useCallback(async () => {
+    if (!currentUser?.id) return;
 
-    const newSocket = io('/?XTransformPort=3003', {
-      transports: ['websocket'],
-    });
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/conversations?userId=${currentUser.id}`);
+      const data = await res.json();
+      if (data.conversations) {
+        setConversations(data.conversations);
+      }
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser?.id]);
 
-    newSocket.on('connect', () => {
-      setIsConnected(true);
-      newSocket.emit('join', userId);
-    });
-
-    newSocket.on('disconnect', () => {
-      setIsConnected(false);
-    });
-
-    newSocket.on('conversations', (convos: Conversation[]) => {
-      setConversations(convos);
-    });
-
-    newSocket.on('messages', (data: { conversationId: string; messages: Message[] }) => {
-      if (data.conversationId === selectedConversation?.id) {
+  // Fetch messages for selected conversation
+  const fetchMessages = useCallback(async (conversationId: string) => {
+    setLoadingMessages(true);
+    try {
+      const res = await fetch(`/api/chat-messages?conversationId=${conversationId}&limit=50`);
+      const data = await res.json();
+      if (data.messages) {
         setMessages(data.messages);
+        // Mark as read
+        await fetch('/api/chat-messages', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ conversationId, userId: currentUser.id }),
+        });
       }
-    });
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    } finally {
+      setLoadingMessages(false);
+    }
+  }, [currentUser?.id]);
 
-    newSocket.on('new_message', (message: Message) => {
-      if (message.conversationId === selectedConversation?.id) {
-        setMessages(prev => [...prev, message]);
+  // Initialize conversation with specific user
+  const initConversation = useCallback(async (otherUser: { id: string; name: string }) => {
+    try {
+      const res = await fetch('/api/conversations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user1Id: currentUser.id,
+          user2Id: otherUser.id,
+          projectId,
+        }),
+      });
+      const data = await res.json();
+      if (data.conversation) {
+        setSelectedConversation(data.conversation);
+        fetchMessages(data.conversation.id);
+        fetchConversations(); // Refresh list
       }
-    });
+    } catch (error) {
+      console.error('Error initializing conversation:', error);
+      toast.error('Gagal memulai percakapan');
+    }
+  }, [currentUser.id, projectId, fetchMessages, fetchConversations]);
 
-    newSocket.on('message_sent', (message: Message) => {
-      setMessages(prev => [...prev, message]);
-    });
+  // Subscribe to realtime messages
+  useEffect(() => {
+    if (!open || !currentUser?.id) return;
 
-    socketRef.current = newSocket;
+    // Create channel for this user
+    const channel = supabase
+      .channel(`chat:${currentUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+        },
+        (payload) => {
+          const newMsg = payload.new as Message;
+          // If message is for current conversation, add it
+          if (selectedConversation?.id === newMsg.conversationId) {
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.find(m => m.id === newMsg.id)) return prev;
+              return [...prev, {
+                ...newMsg,
+                sender: newMsg.senderId === currentUser.id
+                  ? { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar || null, role: '' }
+                  : selectedConversation.otherUser,
+              }];
+            });
+          }
+          // Refresh conversations to update last message
+          fetchConversations();
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
 
     return () => {
-      newSocket.disconnect();
-      socketRef.current = null;
-    };
-  }, [open, userId, selectedConversation?.id]);
-
-  // Auto-select conversation if recipient is specified
-  useEffect(() => {
-    if (recipientId && recipientName && socketRef.current) {
-      const existingConversation = conversations.find(
-        c => c.participants.includes(recipientId)
-      );
-
-      if (existingConversation) {
-        // Use setTimeout to defer state update
-        setTimeout(() => {
-          setSelectedConversation(existingConversation);
-          socketRef.current?.emit('get_messages', existingConversation.id);
-        }, 0);
-      } else {
-        const newConv: Conversation = {
-          id: `conv_${[userId, recipientId].sort().join('_')}`,
-          participants: [userId, recipientId],
-          projectId,
-          projectName,
-        };
-        setTimeout(() => {
-          setSelectedConversation(newConv);
-          setMessages([]);
-        }, 0);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
       }
-    }
-  }, [recipientId, recipientName, conversations, userId, projectId, projectName]);
+    };
+  }, [open, currentUser?.id, selectedConversation?.id, fetchConversations]);
 
-  // Load messages when conversation selected
+  // Initial fetch
   useEffect(() => {
-    if (selectedConversation && socketRef.current) {
-      socketRef.current.emit('get_messages', selectedConversation.id);
-      socketRef.current.emit('mark_read', { conversationId: selectedConversation.id, userId });
+    if (open && currentUser?.id) {
+      fetchConversations();
     }
-  }, [selectedConversation, userId]);
+  }, [open, currentUser?.id, fetchConversations]);
 
-  // Scroll to bottom on new messages
+  // Start with specific user if provided
+  useEffect(() => {
+    if (open && startWithUser && !selectedConversation) {
+      initConversation(startWithUser);
+    }
+  }, [open, startWithUser, selectedConversation, initConversation]);
+
+  // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = useCallback(() => {
-    if (!newMessage.trim() || !socketRef.current || !selectedConversation) return;
+  // Send message
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedConversation) return;
 
-    const otherParticipant = selectedConversation.participants.find(p => p !== userId);
-
-    socketRef.current.emit('send_message', {
-      senderId: userId,
-      senderName: userName,
-      receiverId: otherParticipant,
-      content: newMessage.trim(),
-      conversationId: selectedConversation.id,
-      projectId: selectedConversation.projectId,
-      projectName: selectedConversation.projectName,
-    });
-
+    const messageContent = newMessage.trim();
     setNewMessage('');
-  }, [newMessage, selectedConversation, userId, userName]);
 
-  const getOtherParticipantName = (conversation: Conversation) => {
-    return recipientName || 'Pengguna';
+    try {
+      const res = await fetch('/api/chat-messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId: selectedConversation.id,
+          senderId: currentUser.id,
+          content: messageContent,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.message) {
+        setMessages(prev => [...prev, data.message]);
+        fetchConversations(); // Refresh to update last message
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast.error('Gagal mengirim pesan');
+      setNewMessage(messageContent); // Restore message on error
+    }
   };
 
-  const handleSelectConversation = (conversation: Conversation) => {
-    setSelectedConversation(conversation);
-    socketRef.current?.emit('get_messages', conversation.id);
+  // Handle key press
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
   };
+
+  // Select conversation
+  const handleSelectConversation = (conv: Conversation) => {
+    setSelectedConversation(conv);
+    fetchMessages(conv.id);
+  };
+
+  // Go back to conversation list
+  const handleBack = () => {
+    setSelectedConversation(null);
+    setMessages([]);
+    fetchConversations();
+  };
+
+  // Filter conversations by search
+  const filteredConversations = conversations.filter(conv =>
+    conv.otherUser.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conv.project?.title?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg h-[600px] p-0">
-        <div className="flex flex-col h-full">
-          {selectedConversation ? (
-            <>
-              {/* Chat Header */}
-              <div className="p-4 border-b flex items-center gap-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSelectedConversation(null)}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div className="flex-1">
-                  <h3 className="font-medium">{getOtherParticipantName(selectedConversation)}</h3>
-                  {selectedConversation.projectName && (
-                    <p className="text-xs text-slate-500">{selectedConversation.projectName}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-                  <span className="text-xs text-slate-500">{isConnected ? 'Online' : 'Offline'}</span>
-                </div>
-              </div>
+      <DialogContent className="sm:max-w-4xl h-[600px] p-0 gap-0">
+        <div className="flex h-full">
+          {/* Conversations Sidebar */}
+          <div className={`w-80 border-r flex flex-col ${selectedConversation ? 'hidden md:flex' : 'flex'}`}>
+            <DialogHeader className="p-4 border-b">
+              <DialogTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                Pesan
+              </DialogTitle>
+            </DialogHeader>
 
-              {/* Messages */}
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
-                  {messages.length === 0 ? (
-                    <div className="text-center py-8">
-                      <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                      <p className="text-slate-500">Mulai percakapan</p>
-                    </div>
-                  ) : (
-                    messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${message.senderId === userId ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[80%] rounded-lg px-3 py-2 ${
-                            message.senderId === userId
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-slate-100'
-                          }`}
-                        >
-                          <p className="text-sm">{message.content}</p>
-                          <p className={`text-xs mt-1 ${
-                            message.senderId === userId ? 'text-primary-foreground/70' : 'text-slate-400'
-                          }`}>
-                            {new Date(message.timestamp).toLocaleTimeString('id-ID', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                  <div ref={messagesEndRef} />
-                </div>
-              </ScrollArea>
-
-              {/* Message Input */}
-              <div className="p-4 border-t">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Ketik pesan..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    disabled={!isConnected}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!newMessage.trim() || !isConnected}
-                    className="bg-primary hover:bg-primary/90"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
+            {/* Search */}
+            <div className="p-3 border-b">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Cari percakapan..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
               </div>
-            </>
-          ) : (
-            <>
-              {/* Conversations List */}
-              <DialogHeader className="p-4 border-b">
-                <DialogTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                  Pesan
-                </DialogTitle>
-              </DialogHeader>
-              
-              <ScrollArea className="flex-1">
-                {conversations.length === 0 ? (
-                  <div className="text-center py-8">
-                    <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-                    <p className="text-slate-500">Belum ada percakapan</p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
-                    {conversations.map((conversation) => (
-                      <button
-                        key={conversation.id}
-                        className="w-full p-4 flex items-center gap-3 hover:bg-slate-50 text-left"
-                        onClick={() => handleSelectConversation(conversation)}
-                      >
-                        <Avatar>
-                          <AvatarFallback className="bg-primary/10 text-primary">
-                            <User className="h-4 w-4" />
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">
-                            {getOtherParticipantName(conversation)}
-                          </p>
-                          {conversation.projectName && (
-                            <p className="text-xs text-slate-500 truncate">{conversation.projectName}</p>
+            </div>
+
+            {/* Conversations List */}
+            <ScrollArea className="flex-1">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : filteredConversations.length === 0 ? (
+                <div className="text-center py-8 px-4">
+                  <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-3" />
+                  <p className="text-slate-500">Belum ada percakapan</p>
+                  <p className="text-sm text-slate-400 mt-1">
+                    Mulai chat dengan mengklik tombol chat pada profil kontraktor
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y">
+                  {filteredConversations.map((conv) => (
+                    <button
+                      key={conv.id}
+                      onClick={() => handleSelectConversation(conv)}
+                      className={`w-full p-3 flex items-start gap-3 hover:bg-slate-50 transition-colors text-left ${
+                        selectedConversation?.id === conv.id ? 'bg-primary/5' : ''
+                      }`}
+                    >
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={conv.otherUser.avatar || undefined} />
+                        <AvatarFallback>
+                          {conv.otherUser.role === 'CONTRACTOR' ? (
+                            <Building2 className="h-5 w-5" />
+                          ) : (
+                            <User className="h-5 w-5" />
                           )}
-                          {conversation.lastMessage && (
-                            <p className="text-sm text-slate-500 truncate">
-                              {conversation.lastMessage.content}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-right">
-                          {conversation.unreadCount[userId] > 0 && (
-                            <Badge className="bg-primary">
-                              {conversation.unreadCount[userId]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium truncate">{conv.otherUser.name}</span>
+                          {conv.unreadCount > 0 && (
+                            <Badge className="bg-primary text-xs px-1.5 py-0.5">
+                              {conv.unreadCount}
                             </Badge>
                           )}
-                          {conversation.lastMessage && (
-                            <p className="text-xs text-slate-400 mt-1">
-                              {new Date(conversation.lastMessage.timestamp).toLocaleDateString('id-ID', {
-                                day: 'numeric',
-                                month: 'short'
-                              })}
-                            </p>
-                          )}
                         </div>
-                      </button>
-                    ))}
+                        {conv.project && (
+                          <p className="text-xs text-primary truncate">{conv.project.title}</p>
+                        )}
+                        <p className="text-sm text-slate-500 truncate mt-0.5">
+                          {conv.lastMessage || 'Belum ada pesan'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {formatDistanceToNow(new Date(conv.lastMessageAt), {
+                            addSuffix: true,
+                            locale: id,
+                          })}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+
+          {/* Messages Area */}
+          <div className={`flex-1 flex flex-col ${selectedConversation ? 'flex' : 'hidden md:flex'}`}>
+            {selectedConversation ? (
+              <>
+                {/* Header */}
+                <div className="p-4 border-b flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="md:hidden"
+                    onClick={handleBack}
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                  <Avatar>
+                    <AvatarImage src={selectedConversation.otherUser.avatar || undefined} />
+                    <AvatarFallback>
+                      {selectedConversation.otherUser.role === 'CONTRACTOR' ? (
+                        <Building2 className="h-5 w-5" />
+                      ) : (
+                        <User className="h-5 w-5" />
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <h3 className="font-medium">{selectedConversation.otherUser.name}</h3>
+                    {selectedConversation.project && (
+                      <p className="text-xs text-slate-500">{selectedConversation.project.title}</p>
+                    )}
                   </div>
-                )}
-              </ScrollArea>
-            </>
-          )}
+                </div>
+
+                {/* Messages */}
+                <ScrollArea className="flex-1 p-4">
+                  {loadingMessages ? (
+                    <div className="flex items-center justify-center h-full">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {messages.map((msg) => {
+                        const isOwn = msg.senderId === currentUser.id;
+                        return (
+                          <div
+                            key={msg.id}
+                            className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <Card className={`max-w-[70%] p-3 ${isOwn ? 'bg-primary text-white' : 'bg-slate-100'}`}>
+                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                              <p className={`text-xs mt-1 ${isOwn ? 'text-white/70' : 'text-slate-400'}`}>
+                                {formatDistanceToNow(new Date(msg.createdAt), {
+                                  addSuffix: true,
+                                  locale: id,
+                                })}
+                              </p>
+                            </Card>
+                          </div>
+                        );
+                      })}
+                      <div ref={messagesEndRef} />
+                    </div>
+                  )}
+                </ScrollArea>
+
+                {/* Input */}
+                <div className="p-4 border-t">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Ketik pesan..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={!newMessage.trim()}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <MessageSquare className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500">Pilih percakapan untuk memulai</p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

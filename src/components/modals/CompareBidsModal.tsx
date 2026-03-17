@@ -30,6 +30,14 @@ export function CompareBidsModal({
 }: CompareBidsModalProps) {
   const bidsToCompare = bids.filter(b => selectedBids.includes(b.id));
 
+  // Calculate actual best price and highest rating
+  const lowestPrice = Math.min(...bidsToCompare.map(b => b.price));
+  const highestRating = Math.max(...bidsToCompare.map(b => b.contractor.rating || 0));
+
+  // Find the bid IDs with lowest price and highest rating
+  const bestPriceBidId = bidsToCompare.find(b => b.price === lowestPrice)?.id;
+  const highestRatingBidId = bidsToCompare.find(b => (b.contractor.rating || 0) === highestRating)?.id;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -48,7 +56,7 @@ export function CompareBidsModal({
               <thead>
                 <tr className="border-b">
                   <th className="p-3 text-left bg-slate-50 font-medium">Kriteria</th>
-                  {bidsToCompare.map((bid, idx) => (
+                  {bidsToCompare.map((bid) => (
                     <th key={bid.id} className="p-3 text-center bg-slate-50">
                       <div className="flex flex-col items-center">
                         <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-2">
@@ -56,8 +64,14 @@ export function CompareBidsModal({
                         </div>
                         <span className="font-semibold">{bid.contractor.name}</span>
                         <span className="text-xs text-slate-500">{bid.contractor.company}</span>
-                        {idx === 0 && <Badge className="mt-2 bg-primary/10 text-primary text-xs">Harga Terbaik</Badge>}
-                        {idx === 1 && <Badge className="mt-2 bg-yellow-100 text-yellow-700 text-xs">Rating Tertinggi</Badge>}
+                        <div className="flex gap-1 mt-2 flex-wrap justify-center">
+                          {bid.id === bestPriceBidId && (
+                            <Badge className="bg-primary/10 text-primary text-xs">Harga Terbaik</Badge>
+                          )}
+                          {bid.id === highestRatingBidId && (
+                            <Badge className="bg-yellow-100 text-yellow-700 text-xs">Rating Tertinggi</Badge>
+                          )}
+                        </div>
                       </div>
                     </th>
                   ))}

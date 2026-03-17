@@ -7,6 +7,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download, FileText, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ExportModalProps {
   open: boolean;
@@ -82,32 +84,69 @@ export function ExportModal({
   };
 
   const generatePDF = (data: Array<{ title: string; value: string | number }>, title: string, subtitle: string) => {
-    // Create a simple text-based report (can be opened as PDF in browsers)
-    const content = [
-      title,
-      subtitle,
-      '='.repeat(50),
-      '',
-      ...data.map(row => {
-        if (row.title.startsWith('---')) {
-          return ['', row.title, '-'.repeat(40)];
-        }
-        if (!row.title) return '';
-        return `${row.title}: ${row.value}`;
-      }),
-      '',
-      '='.repeat(50),
+    // Create PDF document
+    const doc = new jsPDF();
+    
+    // Add title
+    doc.setFontSize(20);
+    doc.setTextColor(30, 41, 59); // slate-800
+    doc.text(title, 14, 20);
+    
+    // Add subtitle
+    doc.setFontSize(12);
+    doc.setTextColor(100, 116, 139); // slate-500
+    doc.text(subtitle, 14, 30);
+    
+    // Add horizontal line
+    doc.setDrawColor(203, 213, 225); // slate-300
+    doc.line(14, 35, 196, 35);
+    
+    // Prepare table data
+    const tableData = data
+      .filter(row => row.title && !row.title.startsWith('---'))
+      .map(row => [row.title, String(row.value)]);
+    
+    // Add table
+    autoTable(doc, {
+      startY: 45,
+      head: [['Kriteria', 'Nilai']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [79, 70, 229], // primary color
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252], // slate-50
+      },
+      styles: {
+        fontSize: 10,
+        cellPadding: 5,
+      },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { cellWidth: 100 },
+      },
+    });
+    
+    // Add footer
+    const pageHeight = doc.internal.pageSize.height;
+    doc.setFontSize(9);
+    doc.setTextColor(148, 163, 184); // slate-400
+    doc.text(
       `Diekspor pada: ${new Date().toLocaleString('id-ID')}`,
+      14,
+      pageHeight - 20
+    );
+    doc.text(
       'TenderPro - Platform Tender Konstruksi Terpercaya',
-    ].join('\n');
-
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+      14,
+      pageHeight - 14
+    );
+    
+    // Save PDF
+    doc.save(`${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (

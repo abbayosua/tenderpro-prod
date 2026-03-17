@@ -18,6 +18,7 @@ import { formatRupiah, getStatusColor, getStatusLabel } from '@/lib/helpers';
 import { SimpleStatsCard } from '@/components/shared/StatsCard';
 import { VerificationAlert } from '@/components/shared/VerificationAlert';
 import { PortfolioModal } from '@/components/modals/PortfolioModal';
+import { ChatModal } from '@/components/modals/ChatModal';
 
 interface Portfolio {
   id: string;
@@ -52,6 +53,7 @@ export function ContractorDashboard({
   const [portfolioModalOpen, setPortfolioModalOpen] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
 
   // Load portfolios
   const loadPortfolios = useCallback(async () => {
@@ -119,6 +121,9 @@ export function ContractorDashboard({
             <span className="text-2xl font-bold text-slate-800">TenderPro</span>
           </div>
           <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => setChatModalOpen(true)}>
+              <MessageSquare className="h-5 w-5" />
+            </Button>
             <div className="text-right">
               <p className="font-medium">{user.name}</p>
               <p className="text-sm text-slate-500">Kontraktor</p>
@@ -343,6 +348,13 @@ export function ContractorDashboard({
         portfolio={selectedPortfolio}
         userId={user.id}
         onSuccess={handlePortfolioSuccess}
+      />
+
+      {/* Chat Modal */}
+      <ChatModal
+        open={chatModalOpen}
+        onOpenChange={setChatModalOpen}
+        currentUser={{ id: user.id, name: user.name }}
       />
     </div>
   );

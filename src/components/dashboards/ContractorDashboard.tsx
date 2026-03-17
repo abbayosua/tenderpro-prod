@@ -54,6 +54,8 @@ export function ContractorDashboard({
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [withdrawConfirmBid, setWithdrawConfirmBid] = useState<{ id: string; title: string } | null>(null);
+  const [withdrawing, setWithdrawing] = useState(false);
 
   // Load portfolios
   const loadPortfolios = useCallback(async () => {
@@ -109,6 +111,29 @@ export function ContractorDashboard({
   // Handle portfolio success
   const handlePortfolioSuccess = () => {
     loadPortfolios();
+  };
+
+  // Handle bid withdrawal
+  const handleWithdrawBid = async (bidId: string) => {
+    setWithdrawing(true);
+    try {
+      const res = await fetch(`/api/bids?id=${bidId}&contractorId=${user.id}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Penawaran berhasil dibatalkan');
+        setWithdrawConfirmBid(null);
+        // Refresh the page to update the bids list
+        window.location.reload();
+      } else {
+        toast.error(data.error || 'Gagal membatalkan penawaran');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+    } finally {
+      setWithdrawing(false);
+    }
   };
 
   return (
@@ -205,6 +230,19 @@ export function ContractorDashboard({
                           <span><DollarSign className="h-3 w-3 inline mr-1" />{formatRupiah(bid.price)}</span>
                           <span><Clock className="h-3 w-3 inline mr-1" />{bid.duration} hari</span>
                         </div>
+                        {/* Withdraw button for PENDING bids */}
+                        {bid.status === 'PENDING' && (
+                          <div className="mt-3 flex justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                              onClick={() => setWithdrawConfirmBid({ id: bid.id, title: bid.project?.title || 'Proyek' })}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" /> Batalkan Penawaran
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -356,6 +394,36 @@ export function ContractorDashboard({
         onOpenChange={setChatModalOpen}
         currentUser={{ id: user.id, name: user.name }}
       />
+
+      {/* Withdraw Confirmation Modal */}
+      {withdrawConfirmBid && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <CardTitle className="text-lg">Batalkan Penawaran?</CardTitle>
+              <CardDescription>
+                Apakah Anda yakin ingin membatalkan penawaran untuk proyek "{withdrawConfirmBid.title}"?
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setWithdrawConfirmBid(null)}
+                disabled={withdrawing}
+              >
+                Batal
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => handleWithdrawBid(withdrawConfirmBid.id)}
+                disabled={withdrawing}
+              >
+                {withdrawing ? 'Membatalkan...' : 'Ya, Batalkan'}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

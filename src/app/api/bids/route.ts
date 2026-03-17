@@ -181,3 +181,58 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const bidId = searchParams.get('id');
+    const contractorId = searchParams.get('contractorId');
+
+    if (!bidId || !contractorId) {
+      return NextResponse.json(
+        { error: 'ID penawaran dan ID kontraktor diperlukan' },
+        { status: 400 }
+      );
+    }
+
+    // Check if bid exists and belongs to the contractor
+    const bid = await db.bid.findUnique({
+      where: { id: bidId },
+    });
+
+    if (!bid) {
+      return NextResponse.json(
+        { error: 'Penawaran tidak ditemukan' },
+        { status: 404 }
+      );
+    }
+
+    if (bid.contractorId !== contractorId) {
+      return NextResponse.json(
+        { error: 'Anda tidak memiliki akses untuk membatalkan penawaran ini' },
+        { status: 403 }
+      );
+    }
+
+    // Only allow withdrawal for PENDING bids
+    if (bid.status !== 'PENDING') {
+      return NextResponse.json(
+        { error: 'Hanya penawaran dengan status PENDING yang dapat dibatalkan' },
+        { status: 400 }
+      );
+    }
+
+    // Delete the bid
+    await db.bid.delete({
+      where: { id: bidId },
+    });
+
+    return NextResponse.json({ success: true, message: 'Penawaran berhasil dibatalkan' });
+  } catch (error) {
+    console.error('Delete bid error:', error);
+    return NextResponse.json(
+      { error: 'Terjadi kesalahan server' },
+      { status: 500 }
+    );
+  }
+}

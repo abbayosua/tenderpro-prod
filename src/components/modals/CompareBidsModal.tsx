@@ -10,33 +10,44 @@ import { formatRupiah, calculateMatchScore } from '@/lib/helpers';
 interface CompareBidsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  selectedBids: string[];
-  bids: Bid[];
-  projectCategory: string;
-  projectBudget: number;
-  onAccept: (bidId: string) => void;
-  onReject: (bidId: string) => void;
+  selectedBids?: string[];
+  selectedBidIds?: string[];
+  bids?: Bid[];
+  projectCategory?: string;
+  projectBudget?: number;
+  onAccept?: (bidId: string) => void;
+  onAcceptBid?: (bidId: string) => void;
+  onReject?: (bidId: string) => void;
+  onRejectBid?: (bidId: string) => void;
 }
 
 export function CompareBidsModal({
   open,
   onOpenChange,
   selectedBids,
-  bids,
-  projectCategory,
-  projectBudget,
+  selectedBidIds,
+  bids = [],
+  projectCategory = '',
+  projectBudget = 0,
   onAccept,
+  onAcceptBid,
   onReject,
+  onRejectBid,
 }: CompareBidsModalProps) {
-  const bidsToCompare = bids.filter(b => selectedBids.includes(b.id));
+  // Support both prop naming conventions
+  const selectedIds = selectedBids || selectedBidIds || [];
+  const handleAccept = onAccept || onAcceptBid || (() => {});
+  const handleReject = onReject || onRejectBid || (() => {});
+
+  const bidsToCompare = (bids || []).filter(b => selectedIds.includes(b.id));
 
   // Calculate actual best price and highest rating
-  const lowestPrice = Math.min(...bidsToCompare.map(b => b.price));
-  const highestRating = Math.max(...bidsToCompare.map(b => b.contractor.rating || 0));
+  const lowestPrice = bidsToCompare.length > 0 ? Math.min(...bidsToCompare.map(b => b.price)) : 0;
+  const highestRating = bidsToCompare.length > 0 ? Math.max(...bidsToCompare.map(b => b.contractor?.rating || 0)) : 0;
 
   // Find the bid IDs with lowest price and highest rating
   const bestPriceBidId = bidsToCompare.find(b => b.price === lowestPrice)?.id;
-  const highestRatingBidId = bidsToCompare.find(b => (b.contractor.rating || 0) === highestRating)?.id;
+  const highestRatingBidId = bidsToCompare.find(b => (b.contractor?.rating || 0) === highestRating)?.id;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,8 +73,8 @@ export function CompareBidsModal({
                         <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-2">
                           <Building2 className="h-6 w-6 text-purple-600" />
                         </div>
-                        <span className="font-semibold">{bid.contractor.name}</span>
-                        <span className="text-xs text-slate-500">{bid.contractor.company}</span>
+                        <span className="font-semibold">{bid.contractor?.name || 'Unknown'}</span>
+                        <span className="text-xs text-slate-500">{bid.contractor?.company || '-'}</span>
                         <div className="flex gap-1 mt-2 flex-wrap justify-center">
                           {bid.id === bestPriceBidId && (
                             <Badge className="bg-primary/10 text-primary text-xs">Harga Terbaik</Badge>
@@ -154,10 +165,10 @@ export function CompareBidsModal({
                   {bidsToCompare.map((bid) => (
                     <td key={bid.id} className="p-3 text-center">
                       <div className="flex flex-col gap-2">
-                        <Button className="bg-primary hover:bg-primary/90 w-full" onClick={() => { onAccept(bid.id); onOpenChange(false); }}>
+                        <Button className="bg-primary hover:bg-primary/90 w-full" onClick={() => { handleAccept(bid.id); onOpenChange(false); }}>
                           <CheckCircle className="h-4 w-4 mr-2" /> Pilih
                         </Button>
-                        <Button variant="outline" className="w-full" onClick={() => { onReject(bid.id); onOpenChange(false); }}>
+                        <Button variant="outline" className="w-full" onClick={() => { handleReject(bid.id); onOpenChange(false); }}>
                           Tolak
                         </Button>
                       </div>

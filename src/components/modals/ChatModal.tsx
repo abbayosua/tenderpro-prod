@@ -11,42 +11,35 @@ import { Card } from '@/components/ui/card';
 import {
   MessageSquare, Send, ArrowLeft, User, Building2, Loader2, Search
 } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
-
-interface User {
-  id: string;
-  name: string;
-  avatar: string | null;
-  role: string;
-}
+import { useAuthStore } from '@/lib/auth-store';
 
 interface Message {
   id: string;
-  conversationId: string;
   senderId: string;
   content: string;
   isRead: boolean;
   createdAt: string;
-  sender?: User;
+  isOwn: boolean;
 }
 
 interface Conversation {
   id: string;
-  otherUser: User;
-  project?: { id: string; title: string } | null;
+  participant: {
+    id: string;
+    name: string;
+    avatar?: string | null;
+  };
   lastMessage?: string;
   lastMessageAt: string;
-  unreadCount: number;
+  project?: { id: string; title: string } | null;
 }
 
 interface ChatModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  currentUser: { id: string; name: string; avatar?: string | null };
-  // Optional: Start chat with specific user
   startWithUser?: { id: string; name: string } | null;
   projectId?: string;
 }
@@ -54,174 +47,170 @@ interface ChatModalProps {
 export function ChatModal({
   open,
   onOpenChange,
-  currentUser,
   startWithUser,
   projectId,
 }: ChatModalProps) {
+  const { user, token } = useAuthStore();
+  
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sending, setSending] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
-    if (!currentUser?.id) return;
+    if (!token) return;
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/conversations?userId=${currentUser.id}`);
+      const res = await fetch('/api/conversations', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       const data = await res.json();
-      if (data.conversations) {
-        setConversations(data.conversations);
+      if (data.success) {
+        setConversations(data.data);
       }
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
       setLoading(false);
     }
-  }, [currentUser?.id]);
+  }, [token]);
 
   // Fetch messages for selected conversation
   const fetchMessages = useCallback(async (conversationId: string) => {
+    if (!token) return;
+    
     setLoadingMessages(true);
     try {
-      const res = await fetch(`/api/chat-messages?conversationId=${conversationId}&limit=50`);
+      const res = await fetch(`/api/conversations/${conversationId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       const data = await res.json();
-      if (data.messages) {
-        setMessages(data.messages);
-        // Mark as read
-        await fetch('/api/chat-messages', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ conversationId, userId: currentUser.id }),
-        });
+      if (data.success) {
+        setMessages(data.data.messages);
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
       setLoadingMessages(false);
     }
-  }, [currentUser?.id]);
+  }, [token]);
 
   // Initialize conversation with specific user
   const initConversation = useCallback(async (otherUser: { id: string; name: string }) => {
+    if (!token) return;
+    
     try {
       const res = await fetch('/api/conversations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
-          user1Id: currentUser.id,
-          user2Id: otherUser.id,
+          participantId: otherUser.id,
           projectId,
         }),
       });
       const data = await res.json();
-      if (data.conversation) {
-        setSelectedConversation(data.conversation);
-        fetchMessages(data.conversation.id);
+      if (data.success) {
+        // Create a conversation object
+        const conv: Conversation = {
+          id: data.data.id,
+          participant: {
+            id: otherUser.id,
+            name: otherUser.name,
+          },
+          lastMessageAt: data.data.lastMessageAt,
+          project: data.data.projectId ? { id: data.data.projectId, title: '' } : null,
+        };
+        setSelectedConversation(conv);
+        setMessages(data.data.messages || []);
         fetchConversations(); // Refresh list
       }
     } catch (error) {
       console.error('Error initializing conversation:', error);
       toast.error('Gagal memulai percakapan');
     }
-  }, [currentUser.id, projectId, fetchMessages, fetchConversations]);
-
-  // Subscribe to realtime messages
-  useEffect(() => {
-    if (!open || !currentUser?.id) return;
-
-    // Create channel for this user
-    const channel = supabase
-      .channel(`chat:${currentUser.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-        },
-        (payload) => {
-          const newMsg = payload.new as Message;
-          // If message is for current conversation, add it
-          if (selectedConversation?.id === newMsg.conversationId) {
-            setMessages(prev => {
-              // Avoid duplicates
-              if (prev.find(m => m.id === newMsg.id)) return prev;
-              return [...prev, {
-                ...newMsg,
-                sender: newMsg.senderId === currentUser.id
-                  ? { id: currentUser.id, name: currentUser.name, avatar: currentUser.avatar || null, role: '' }
-                  : selectedConversation.otherUser,
-              }];
-            });
-          }
-          // Refresh conversations to update last message
-          fetchConversations();
-        }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-      }
-    };
-  }, [open, currentUser?.id, selectedConversation?.id, fetchConversations]);
+  }, [token, projectId, fetchConversations]);
 
   // Initial fetch
   useEffect(() => {
-    if (open && currentUser?.id) {
+    if (open && token) {
       fetchConversations();
     }
-  }, [open, currentUser?.id, fetchConversations]);
+  }, [open, token, fetchConversations]);
 
   // Start with specific user if provided
   useEffect(() => {
-    if (open && startWithUser && !selectedConversation) {
+    if (open && startWithUser && !selectedConversation && token) {
       initConversation(startWithUser);
     }
-  }, [open, startWithUser, selectedConversation, initConversation]);
+  }, [open, startWithUser, selectedConversation, initConversation, token]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Polling for new messages (every 3 seconds when conversation is selected)
+  useEffect(() => {
+    if (open && selectedConversation && token) {
+      pollingRef.current = setInterval(() => {
+        fetchMessages(selectedConversation.id);
+      }, 3000);
+    }
+    
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, [open, selectedConversation, token, fetchMessages]);
+
   // Send message
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+    if (!newMessage.trim() || !selectedConversation || !token) return;
 
     const messageContent = newMessage.trim();
     setNewMessage('');
+    setSending(true);
 
     try {
-      const res = await fetch('/api/chat-messages', {
+      const res = await fetch('/api/messages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({
           conversationId: selectedConversation.id,
-          senderId: currentUser.id,
           content: messageContent,
         }),
       });
 
       const data = await res.json();
-      if (data.success && data.message) {
-        setMessages(prev => [...prev, data.message]);
+      if (data.success && data.data) {
+        setMessages(prev => [...prev, { ...data.data, isOwn: true }]);
         fetchConversations(); // Refresh to update last message
       }
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Gagal mengirim pesan');
       setNewMessage(messageContent); // Restore message on error
+    } finally {
+      setSending(false);
     }
   };
 
@@ -248,9 +237,22 @@ export function ChatModal({
 
   // Filter conversations by search
   const filteredConversations = conversations.filter(conv =>
-    conv.otherUser.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conv.participant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.project?.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (!user) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <div className="text-center py-8">
+            <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+            <p className="text-slate-500">Silakan login untuk menggunakan fitur chat</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -289,7 +291,7 @@ export function ChatModal({
                   <MessageSquare className="h-12 w-12 text-slate-300 mx-auto mb-3" />
                   <p className="text-slate-500">Belum ada percakapan</p>
                   <p className="text-sm text-slate-400 mt-1">
-                    Mulai chat dengan mengklik tombol chat pada profil kontraktor
+                    Mulai chat dari profil pengguna
                   </p>
                 </div>
               ) : (
@@ -303,23 +305,14 @@ export function ChatModal({
                       }`}
                     >
                       <Avatar className="h-10 w-10">
-                        <AvatarImage src={conv.otherUser.avatar || undefined} />
+                        <AvatarImage src={conv.participant.avatar || undefined} />
                         <AvatarFallback>
-                          {conv.otherUser.role === 'CONTRACTOR' ? (
-                            <Building2 className="h-5 w-5" />
-                          ) : (
-                            <User className="h-5 w-5" />
-                          )}
+                          <User className="h-5 w-5" />
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium truncate">{conv.otherUser.name}</span>
-                          {conv.unreadCount > 0 && (
-                            <Badge className="bg-primary text-xs px-1.5 py-0.5">
-                              {conv.unreadCount}
-                            </Badge>
-                          )}
+                          <span className="font-medium truncate">{conv.participant.name}</span>
                         </div>
                         {conv.project && (
                           <p className="text-xs text-primary truncate">{conv.project.title}</p>
@@ -356,17 +349,13 @@ export function ChatModal({
                     <ArrowLeft className="h-5 w-5" />
                   </Button>
                   <Avatar>
-                    <AvatarImage src={selectedConversation.otherUser.avatar || undefined} />
+                    <AvatarImage src={selectedConversation.participant.avatar || undefined} />
                     <AvatarFallback>
-                      {selectedConversation.otherUser.role === 'CONTRACTOR' ? (
-                        <Building2 className="h-5 w-5" />
-                      ) : (
-                        <User className="h-5 w-5" />
-                      )}
+                      <User className="h-5 w-5" />
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-medium">{selectedConversation.otherUser.name}</h3>
+                    <h3 className="font-medium">{selectedConversation.participant.name}</h3>
                     {selectedConversation.project && (
                       <p className="text-xs text-slate-500">{selectedConversation.project.title}</p>
                     )}
@@ -381,25 +370,22 @@ export function ChatModal({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      {messages.map((msg) => {
-                        const isOwn = msg.senderId === currentUser.id;
-                        return (
-                          <div
-                            key={msg.id}
-                            className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}
-                          >
-                            <Card className={`max-w-[70%] p-3 ${isOwn ? 'bg-primary text-white' : 'bg-slate-100'}`}>
-                              <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                              <p className={`text-xs mt-1 ${isOwn ? 'text-white/70' : 'text-slate-400'}`}>
-                                {formatDistanceToNow(new Date(msg.createdAt), {
-                                  addSuffix: true,
-                                  locale: id,
-                                })}
-                              </p>
-                            </Card>
-                          </div>
-                        );
-                      })}
+                      {messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <Card className={`max-w-[70%] p-3 ${msg.isOwn ? 'bg-primary text-white' : 'bg-slate-100'}`}>
+                            <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                            <p className={`text-xs mt-1 ${msg.isOwn ? 'text-white/70' : 'text-slate-400'}`}>
+                              {formatDistanceToNow(new Date(msg.createdAt), {
+                                addSuffix: true,
+                                locale: id,
+                              })}
+                            </p>
+                          </Card>
+                        </div>
+                      ))}
                       <div ref={messagesEndRef} />
                     </div>
                   )}
@@ -414,13 +400,18 @@ export function ChatModal({
                       onChange={(e) => setNewMessage(e.target.value)}
                       onKeyPress={handleKeyPress}
                       className="flex-1"
+                      disabled={sending}
                     />
                     <Button
                       onClick={handleSendMessage}
-                      disabled={!newMessage.trim()}
+                      disabled={!newMessage.trim() || sending}
                       className="bg-primary hover:bg-primary/90"
                     >
-                      <Send className="h-4 w-4" />
+                      {sending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </div>

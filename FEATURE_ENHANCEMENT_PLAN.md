@@ -397,16 +397,16 @@
 
 | Task | Status | Test | Commit |
 |------|--------|------|--------|
-| 6.1 JWT Authentication Implementation | ✅ Completed | ✅ 11/11 passed | In progress |
-| 6.2 API Authorization Middleware | ✅ Completed | ✅ Included | In progress |
-| 6.3 Input Validation with Zod | ✅ Completed | ✅ Included | In progress |
+| 6.1 JWT Authentication Implementation | ✅ Completed | ✅ 11/11 passed | 499dd1b |
+| 6.2 API Authorization Middleware | ✅ Completed | ✅ Included | 499dd1b |
+| 6.3 Input Validation with Zod | ✅ Completed | ✅ Included | 499dd1b |
 
 ### Sprint 2: Core Features
 
 | Task | Status | Test | Commit |
 |------|--------|------|--------|
-| 1.2 Project Search & Discovery | ⬜ Pending | ⬜ | - |
-| Project Detail Page with Bidding | ⬜ Pending | ⬜ | - |
+| 1.2 Project Search & Discovery | ✅ Completed | ✅ 11/11 passed | Pending |
+| Project Detail Page with Bidding | ✅ Completed | ✅ Included | Pending |
 | 2.1 Real-Time Chat System | ⬜ Pending | ⬜ | - |
 
 ### Sprint 3: Enhancement

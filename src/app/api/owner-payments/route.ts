@@ -12,14 +12,27 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User ID required' }, { status: 400 });
     }
 
-    // Get all projects for this owner
+    // Get all projects for this owner with milestones and payments
     const projects = await db.project.findMany({
-      where: { ownerId: userId },
-      select: { id: true, title: true, budget: true },
+      where: { 
+        ownerId: userId,
+        ...(projectId && projectId !== 'all' ? { id: projectId } : {}),
+      },
+      select: { 
+        id: true, 
+        title: true, 
+        budget: true,
+        status: true,
+        milestones: {
+          include: {
+            payments: true,
+          },
+          orderBy: { order: 'asc' },
+        },
+      },
     });
 
     const projectIds = projects.map(p => p.id);
-    const projectMap = new Map(projects.map(p => [p.id, { title: p.title, budget: p.budget }]));
 
     if (projectIds.length === 0) {
       return NextResponse.json({
@@ -29,56 +42,134 @@ export async function GET(request: NextRequest) {
           totalPending: 0,
         },
         payments: [],
+        milestoneBreakdown: [],
       });
     }
 
-    // Get all milestones for these projects
-    const milestones = await db.projectMilestone.findMany({
-      where: {
-        projectId: { in: projectIds },
-        ...(projectId && projectId !== 'all' ? { projectId } : {}),
-      },
-      include: {
-        payments: true,
-        project: {
-          select: { title: true },
-        },
-      },
-    });
-
     // Calculate summary
-    const totalBudget = milestones.reduce((sum, m) => sum + (m.amount || 0), 0);
-    
+    let totalBudget = 0;
     let totalPaid = 0;
     let totalPending = 0;
     const allPayments: Array<{
       id: string;
       project: string;
+      projectId: string;
       milestone: string;
+      milestoneId: string;
       amount: number;
       status: string;
       date: string;
       method: string;
     }> = [];
 
-    milestones.forEach(milestone => {
-      milestone.payments.forEach(payment => {
-        if (payment.status === 'CONFIRMED') {
-          totalPaid += payment.amount;
-        } else if (payment.status === 'PENDING') {
-          totalPending += payment.amount;
-        }
+    // Build milestone breakdown by project
+    const milestoneBreakdown: Array<{
+      projectId: string;
+      projectTitle: string;
+      projectBudget: number;
+      projectStatus: string;
+      milestones: Array<{
+        id: string;
+        title: string;
+        description: string | null;
+        amount: number;
+        paidAmount: number;
+        pendingAmount: number;
+        status: string;
+        dueDate: string | null;
+        completedAt: string | null;
+        order: number;
+        paymentCount: number;
+        percentage: number;
+      }>;
+      totalMilestoneBudget: number;
+      totalMilestonePaid: number;
+      totalMilestonePending: number;
+    }> = [];
 
-        allPayments.push({
-          id: payment.id,
-          project: milestone.project.title,
-          milestone: milestone.title,
-          amount: payment.amount,
-          status: payment.status,
-          date: payment.paidAt ? new Date(payment.paidAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Pending',
-          method: payment.method || 'Transfer Bank',
+    projects.forEach(project => {
+      const projectBreakdown = {
+        projectId: project.id,
+        projectTitle: project.title,
+        projectBudget: project.budget,
+        projectStatus: project.status,
+        milestones: [] as Array<{
+          id: string;
+          title: string;
+          description: string | null;
+          amount: number;
+          paidAmount: number;
+          pendingAmount: number;
+          status: string;
+          dueDate: string | null;
+          completedAt: string | null;
+          order: number;
+          paymentCount: number;
+          percentage: number;
+        }>,
+        totalMilestoneBudget: 0,
+        totalMilestonePaid: 0,
+        totalMilestonePending: 0,
+      };
+
+      let projectMilestoneBudget = 0;
+      let projectMilestonePaid = 0;
+      let projectMilestonePending = 0;
+
+      project.milestones.forEach(milestone => {
+        let milestonePaid = 0;
+        let milestonePending = 0;
+        const milestoneAmount = milestone.amount || 0;
+
+        milestone.payments.forEach(payment => {
+          if (payment.status === 'CONFIRMED') {
+            milestonePaid += payment.amount;
+          } else if (payment.status === 'PENDING') {
+            milestonePending += payment.amount;
+          }
+
+          allPayments.push({
+            id: payment.id,
+            project: project.title,
+            projectId: project.id,
+            milestone: milestone.title,
+            milestoneId: milestone.id,
+            amount: payment.amount,
+            status: payment.status,
+            date: payment.paidAt ? new Date(payment.paidAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Pending',
+            method: payment.method || 'Transfer Bank',
+          });
+        });
+
+        projectMilestoneBudget += milestoneAmount;
+        projectMilestonePaid += milestonePaid;
+        projectMilestonePending += milestonePending;
+
+        projectBreakdown.milestones.push({
+          id: milestone.id,
+          title: milestone.title,
+          description: milestone.description,
+          amount: milestoneAmount,
+          paidAmount: milestonePaid,
+          pendingAmount: milestonePending,
+          status: milestone.status,
+          dueDate: milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : null,
+          completedAt: milestone.completedAt ? new Date(milestone.completedAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : null,
+          order: milestone.order,
+          paymentCount: milestone.payments.length,
+          percentage: milestoneAmount > 0 ? Math.round((milestonePaid / milestoneAmount) * 100) : 0,
         });
       });
+
+      projectBreakdown.totalMilestoneBudget = projectMilestoneBudget;
+      projectBreakdown.totalMilestonePaid = projectMilestonePaid;
+      projectBreakdown.totalMilestonePending = projectMilestonePending;
+
+      totalBudget += projectMilestoneBudget;
+      totalPaid += projectMilestonePaid;
+      totalPending += projectMilestonePending;
+
+      milestoneBreakdown.push(projectBreakdown);
     });
 
     // Sort payments by date descending
@@ -96,12 +187,14 @@ export async function GET(request: NextRequest) {
         remainingBudget: totalBudget - totalPaid - totalPending,
       },
       payments: allPayments.slice(0, 20), // Limit to 20 recent payments
+      milestoneBreakdown,
     });
   } catch (error) {
     console.error('Error fetching owner payments:', error);
     return NextResponse.json({
       summary: { totalBudget: 0, totalPaid: 0, totalPending: 0 },
       payments: [],
+      milestoneBreakdown: [],
     });
   }
 }

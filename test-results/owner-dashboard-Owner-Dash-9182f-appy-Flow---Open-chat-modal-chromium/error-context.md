@@ -1,0 +1,502 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic:
+      - generic:
+        - img "Background Paths"
+      - generic:
+        - img "Background Paths"
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - img "TenderPro" [ref=e6]
+          - generic [ref=e7]: TenderPro
+        - navigation [ref=e8]:
+          - link "Kontraktor" [ref=e9] [cursor=pointer]:
+            - /url: "#contractors"
+          - link "Proyek" [ref=e10] [cursor=pointer]:
+            - /url: "#projects"
+          - link "Cara Kerja" [ref=e11] [cursor=pointer]:
+            - /url: "#how-it-works"
+        - generic [ref=e12]:
+          - button "Masuk" [ref=e13]
+          - button "Daftar" [ref=e14]:
+            - img
+            - text: Daftar
+    - generic [ref=e16]:
+      - generic [ref=e17]: PLATFORM TENDER KONSTRUKSI TERPERCAYA
+      - heading "Hubungkan Kontraktor & Pemilik Proyek Terpercaya" [level=1] [ref=e18]
+      - paragraph [ref=e19]: Platform tender konstruksi terpercaya di Indonesia. Temukan kontraktor berkualitas atau dapatkan proyek impian Anda dengan mudah dan aman.
+      - generic [ref=e20]:
+        - button "Daftar sebagai Pemilik Proyek" [ref=e21]:
+          - img
+          - text: Daftar sebagai Pemilik Proyek
+        - button "Daftar sebagai Kontraktor" [ref=e22]:
+          - img
+          - text: Daftar sebagai Kontraktor
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - img [ref=e25]
+          - paragraph [ref=e28]: 500+
+          - paragraph [ref=e29]: Proyek Selesai
+        - generic [ref=e30]:
+          - img [ref=e31]
+          - paragraph [ref=e34]: Rp 50M+
+          - paragraph [ref=e35]: Nilai Proyek
+        - generic [ref=e36]:
+          - img [ref=e37]
+          - paragraph [ref=e41]: 150+
+          - paragraph [ref=e42]: Kontraktor Aktif
+        - generic [ref=e43]:
+          - img [ref=e44]
+          - paragraph [ref=e46]: "4.8"
+          - paragraph [ref=e47]: Rating Rata-rata
+    - generic [ref=e49]:
+      - heading "Mengapa Memilih TenderPro?" [level=2] [ref=e51]
+      - generic [ref=e52]:
+        - generic [ref=e53]:
+          - img [ref=e55]
+          - heading "Terverifikasi" [level=3] [ref=e57]
+          - paragraph [ref=e58]: Semua kontraktor dan pemilik proyek melalui proses verifikasi dokumen yang ketat
+        - generic [ref=e59]:
+          - img [ref=e61]
+          - heading "Transparan" [level=3] [ref=e65]
+          - paragraph [ref=e66]: Proses tender yang transparan dengan informasi lengkap mengenai proyek dan kontraktor
+        - generic [ref=e67]:
+          - img [ref=e69]
+          - heading "Terpercaya" [level=3] [ref=e74]
+          - paragraph [ref=e75]: Ribuan proyek telah berhasil diselesaikan melalui platform kami
+    - generic [ref=e77]:
+      - heading "Kontraktor Terpercaya" [level=2] [ref=e78]
+      - paragraph [ref=e79]: Kontraktor terverifikasi dengan rekam jejak yang baik
+    - generic [ref=e81]:
+      - heading "Proyek Aktif" [level=2] [ref=e82]
+      - paragraph [ref=e83]: Proyek yang sedang mencari kontraktor
+    - generic [ref=e85]:
+      - heading "Cara Kerja" [level=2] [ref=e87]
+      - generic [ref=e88]:
+        - tablist [ref=e89]:
+          - tab "Sebagai Pemilik Proyek" [selected] [ref=e90]
+          - tab "Sebagai Kontraktor" [ref=e91]
+        - tabpanel "Sebagai Pemilik Proyek" [ref=e92]:
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - generic [ref=e95]: "1"
+              - heading "Daftar Akun" [level=3] [ref=e96]
+              - paragraph [ref=e97]: Buat akun sebagai pemilik proyek dan lengkapi profil
+            - generic [ref=e98]:
+              - generic [ref=e99]: "2"
+              - heading "Pasang Proyek" [level=3] [ref=e100]
+              - paragraph [ref=e101]: Unggah detail proyek beserta persyaratan
+            - generic [ref=e102]:
+              - generic [ref=e103]: "3"
+              - heading "Pilih Penawaran" [level=3] [ref=e104]
+              - paragraph [ref=e105]: Review dan pilih penawaran terbaik dari kontraktor
+            - generic [ref=e106]:
+              - generic [ref=e107]: "4"
+              - heading "Mulai Proyek" [level=3] [ref=e108]
+              - paragraph [ref=e109]: Konfirmasi dan mulai pengerjaan proyek
+    - generic [ref=e111]:
+      - generic [ref=e112]:
+        - heading "Apa Kata Mereka?" [level=2] [ref=e113]
+        - paragraph [ref=e114]: Testimoni dari pengguna TenderPro
+      - generic [ref=e115]:
+        - generic [ref=e117]:
+          - generic [ref=e118]:
+            - img "Budi Santoso" [ref=e119]
+            - generic [ref=e120]:
+              - heading "Budi Santoso" [level=4] [ref=e121]
+              - paragraph [ref=e122]: Pemilik Proyek
+              - paragraph [ref=e123]: PT Maju Bersama
+          - generic [ref=e124]:
+            - img [ref=e125]
+            - img [ref=e127]
+            - img [ref=e129]
+            - img [ref=e131]
+            - img [ref=e133]
+          - paragraph [ref=e135]: "\"Platform yang sangat membantu! Saya berhasil menemukan kontraktor untuk proyek renovasi kantor dengan harga yang kompetitif dan hasil memuaskan.\""
+        - generic [ref=e137]:
+          - generic [ref=e138]:
+            - img "Dewi Kartika" [ref=e139]
+            - generic [ref=e140]:
+              - heading "Dewi Kartika" [level=4] [ref=e141]
+              - paragraph [ref=e142]: Kontraktor
+              - paragraph [ref=e143]: PT Konstrukindo Jaya
+          - generic [ref=e144]:
+            - img [ref=e145]
+            - img [ref=e147]
+            - img [ref=e149]
+            - img [ref=e151]
+            - img [ref=e153]
+          - paragraph [ref=e155]: "\"Sejak bergabung dengan TenderPro, perusahaan saya mendapatkan akses ke proyek-proyek berkualitas. Proses tender sangat transparan.\""
+        - generic [ref=e157]:
+          - generic [ref=e158]:
+            - img "Ahmad Wijaya" [ref=e159]
+            - generic [ref=e160]:
+              - heading "Ahmad Wijaya" [level=4] [ref=e161]
+              - paragraph [ref=e162]: Pemilik Proyek
+              - paragraph [ref=e163]: Perumahan Griya Asri
+          - generic [ref=e164]:
+            - img [ref=e165]
+            - img [ref=e167]
+            - img [ref=e169]
+            - img [ref=e171]
+            - img [ref=e173]
+          - paragraph [ref=e175]: "\"Kontraktor yang saya dapatkan sangat profesional. Proyek pembangunan rumah selesai tepat waktu dengan kualitas yang excellent!\""
+        - generic [ref=e177]:
+          - generic [ref=e178]:
+            - img "Siti Rahayu" [ref=e179]
+            - generic [ref=e180]:
+              - heading "Siti Rahayu" [level=4] [ref=e181]
+              - paragraph [ref=e182]: Pemilik Proyek
+              - paragraph [ref=e183]: Rumah Pribadi
+          - generic [ref=e184]:
+            - img [ref=e185]
+            - img [ref=e187]
+            - img [ref=e189]
+            - img [ref=e191]
+            - img [ref=e193]
+          - paragraph [ref=e195]: "\"Proses verifikasi yang ketat membuat saya yakin dengan kualitas kontraktor di platform ini. Sangat recommended!\""
+        - generic [ref=e197]:
+          - generic [ref=e198]:
+            - img "Hendra Pratama" [ref=e199]
+            - generic [ref=e200]:
+              - heading "Hendra Pratama" [level=4] [ref=e201]
+              - paragraph [ref=e202]: Kontraktor
+              - paragraph [ref=e203]: PT Bangun Persada
+          - generic [ref=e204]:
+            - img [ref=e205]
+            - img [ref=e207]
+            - img [ref=e209]
+            - img [ref=e211]
+            - img [ref=e213]
+          - paragraph [ref=e215]: "\"TenderPro membantu bisnis kami berkembang pesat. Dalam 6 bulan, kami sudah mendapatkan 3 proyek besar dari platform ini.\""
+        - generic [ref=e217]:
+          - generic [ref=e218]:
+            - img "Maya Anggraini" [ref=e219]
+            - generic [ref=e220]:
+              - heading "Maya Anggraini" [level=4] [ref=e221]
+              - paragraph [ref=e222]: Pemilik Proyek
+              - paragraph [ref=e223]: Kafe Harmoni
+          - generic [ref=e224]:
+            - img [ref=e225]
+            - img [ref=e227]
+            - img [ref=e229]
+            - img [ref=e231]
+            - img [ref=e233]
+          - paragraph [ref=e235]: "\"Renovasi kafe saya berjalan lancar berkat TenderPro. Kontraktor yang saya pilih sangat memahami kebutuhan desain interior.\""
+    - generic [ref=e237]:
+      - generic [ref=e238]:
+        - heading "Proyek Sukses" [level=2] [ref=e239]
+        - paragraph [ref=e240]: Beberapa proyek yang telah berhasil diselesaikan melalui TenderPro
+      - generic [ref=e241]:
+        - generic [ref=e242]:
+          - generic [ref=e243]:
+            - img "Pembangunan Rumah Mewah 2 Lantai" [ref=e244]
+            - generic [ref=e245]: Pembangunan Baru
+            - generic [ref=e246]:
+              - img
+              - text: Selesai
+          - generic [ref=e247]:
+            - generic [ref=e248]: Pembangunan Rumah Mewah 2 Lantai
+            - generic [ref=e249]:
+              - img [ref=e250]
+              - text: Kemang, Jakarta Selatan
+          - generic [ref=e254]:
+            - generic [ref=e255]:
+              - generic [ref=e256]: Nilai Proyek
+              - generic [ref=e257]: Rp 2.500.000.000
+            - generic [ref=e258]:
+              - generic [ref=e259]: Durasi
+              - generic [ref=e260]: 8 bulan
+            - generic [ref=e261]:
+              - generic [ref=e262]: Kontraktor
+              - generic [ref=e263]: PT Bangun Permai Sejahtera
+        - generic [ref=e264]:
+          - generic [ref=e265]:
+            - img "Renovasi Gedung Perkantoran" [ref=e266]
+            - generic [ref=e267]: Renovasi
+            - generic [ref=e268]:
+              - img
+              - text: Selesai
+          - generic [ref=e269]:
+            - generic [ref=e270]: Renovasi Gedung Perkantoran
+            - generic [ref=e271]:
+              - img [ref=e272]
+              - text: SCBD, Jakarta
+          - generic [ref=e276]:
+            - generic [ref=e277]:
+              - generic [ref=e278]: Nilai Proyek
+              - generic [ref=e279]: Rp 5.000.000.000
+            - generic [ref=e280]:
+              - generic [ref=e281]: Durasi
+              - generic [ref=e282]: 6 bulan
+            - generic [ref=e283]:
+              - generic [ref=e284]: Kontraktor
+              - generic [ref=e285]: PT Konstrukindo Maju Jaya
+        - generic [ref=e286]:
+          - generic [ref=e287]:
+            - img "Pembangunan Ruko Modern" [ref=e288]
+            - generic [ref=e289]: Komersial
+            - generic [ref=e290]:
+              - img
+              - text: Selesai
+          - generic [ref=e291]:
+            - generic [ref=e292]: Pembangunan Ruko Modern
+            - generic [ref=e293]:
+              - img [ref=e294]
+              - text: BSD City, Tangerang
+          - generic [ref=e298]:
+            - generic [ref=e299]:
+              - generic [ref=e300]: Nilai Proyek
+              - generic [ref=e301]: Rp 3.500.000.000
+            - generic [ref=e302]:
+              - generic [ref=e303]: Durasi
+              - generic [ref=e304]: 10 bulan
+            - generic [ref=e305]:
+              - generic [ref=e306]: Kontraktor
+              - generic [ref=e307]: PT Rumah Idaman Konstruksi
+        - generic [ref=e308]:
+          - generic [ref=e309]:
+            - img "Desain Interior Restoran" [ref=e310]
+            - generic [ref=e311]: Interior
+            - generic [ref=e312]:
+              - img
+              - text: Selesai
+          - generic [ref=e313]:
+            - generic [ref=e314]: Desain Interior Restoran
+            - generic [ref=e315]:
+              - img [ref=e316]
+              - text: Pondok Indah, Jakarta
+          - generic [ref=e320]:
+            - generic [ref=e321]:
+              - generic [ref=e322]: Nilai Proyek
+              - generic [ref=e323]: Rp 800.000.000
+            - generic [ref=e324]:
+              - generic [ref=e325]: Durasi
+              - generic [ref=e326]: 3 bulan
+            - generic [ref=e327]:
+              - generic [ref=e328]: Kontraktor
+              - generic [ref=e329]: PT Arsitektur Modern Indonesia
+        - generic [ref=e330]:
+          - generic [ref=e331]:
+            - img "Pembangunan Cluster Perumahan" [ref=e332]
+            - generic [ref=e333]: Perumahan
+            - generic [ref=e334]:
+              - img
+              - text: Selesai
+          - generic [ref=e335]:
+            - generic [ref=e336]: Pembangunan Cluster Perumahan
+            - generic [ref=e337]:
+              - img [ref=e338]
+              - text: Bekasi, Jawa Barat
+          - generic [ref=e342]:
+            - generic [ref=e343]:
+              - generic [ref=e344]: Nilai Proyek
+              - generic [ref=e345]: Rp 15.000.000.000
+            - generic [ref=e346]:
+              - generic [ref=e347]: Durasi
+              - generic [ref=e348]: 18 bulan
+            - generic [ref=e349]:
+              - generic [ref=e350]: Kontraktor
+              - generic [ref=e351]: PT Bangun Permai Sejahtera
+        - generic [ref=e352]:
+          - generic [ref=e353]:
+            - img "Renovasi Rumah Tua Heritage" [ref=e354]
+            - generic [ref=e355]: Renovasi
+            - generic [ref=e356]:
+              - img
+              - text: Selesai
+          - generic [ref=e357]:
+            - generic [ref=e358]: Renovasi Rumah Tua Heritage
+            - generic [ref=e359]:
+              - img [ref=e360]
+              - text: Menteng, Jakarta Pusat
+          - generic [ref=e364]:
+            - generic [ref=e365]:
+              - generic [ref=e366]: Nilai Proyek
+              - generic [ref=e367]: Rp 1.200.000.000
+            - generic [ref=e368]:
+              - generic [ref=e369]: Durasi
+              - generic [ref=e370]: 5 bulan
+            - generic [ref=e371]:
+              - generic [ref=e372]: Kontraktor
+              - generic [ref=e373]: PT Renovasi Prima
+    - generic [ref=e375]:
+      - generic [ref=e376]:
+        - heading "Kategori Proyek" [level=2] [ref=e377]
+        - paragraph [ref=e378]: Berbagai jenis proyek yang dapat Anda kelola di TenderPro
+      - generic [ref=e379]:
+        - generic [ref=e380] [cursor=pointer]:
+          - generic [ref=e381]:
+            - img "Pembangunan Rumah" [ref=e382]
+            - img [ref=e384]
+          - generic [ref=e388]:
+            - heading "Pembangunan Rumah" [level=3] [ref=e389]
+            - paragraph [ref=e390]: 150+ proyek
+        - generic [ref=e391] [cursor=pointer]:
+          - generic [ref=e392]:
+            - img "Renovasi" [ref=e393]
+            - img [ref=e395]
+          - generic [ref=e399]:
+            - heading "Renovasi" [level=3] [ref=e400]
+            - paragraph [ref=e401]: 89+ proyek
+        - generic [ref=e402] [cursor=pointer]:
+          - generic [ref=e403]:
+            - img "Komersial" [ref=e404]
+            - img [ref=e406]
+          - generic [ref=e410]:
+            - heading "Komersial" [level=3] [ref=e411]
+            - paragraph [ref=e412]: 67+ proyek
+        - generic [ref=e413] [cursor=pointer]:
+          - generic [ref=e414]:
+            - img "Interior" [ref=e415]
+            - img [ref=e417]
+          - generic [ref=e421]:
+            - heading "Interior" [level=3] [ref=e422]
+            - paragraph [ref=e423]: 45+ proyek
+        - generic [ref=e424] [cursor=pointer]:
+          - generic [ref=e425]:
+            - img "Fasilitas" [ref=e426]
+            - img [ref=e428]
+          - generic [ref=e432]:
+            - heading "Fasilitas" [level=3] [ref=e433]
+            - paragraph [ref=e434]: 32+ proyek
+        - generic [ref=e435] [cursor=pointer]:
+          - generic [ref=e436]:
+            - img "Industrial" [ref=e437]
+            - img [ref=e439]
+          - generic [ref=e443]:
+            - heading "Industrial" [level=3] [ref=e444]
+            - paragraph [ref=e445]: 28+ proyek
+    - generic [ref=e447]:
+      - heading "Partner" [level=2] [ref=e449]
+      - generic [ref=e450]:
+        - img "Bank Mandiri" [ref=e452]
+        - img "PT. PP" [ref=e454]
+        - img "Wijaya Karya" [ref=e456]
+        - img "Asosiasi Kontraktor Indonesia" [ref=e458]
+      - generic [ref=e459]:
+        - generic [ref=e460]:
+          - img [ref=e461]
+          - generic [ref=e463]: ISO 9001:2015
+        - generic [ref=e464]:
+          - img [ref=e465]
+          - generic [ref=e468]: Terdaftar di Kemenparekraf
+        - generic [ref=e469]:
+          - img [ref=e470]
+          - generic [ref=e474]: Verifikasi Dokumen Ketat
+        - generic [ref=e475]:
+          - img [ref=e476]
+          - generic [ref=e481]: Garansi Transaksi Aman
+    - generic [ref=e483]:
+      - generic [ref=e484]:
+        - heading "Pertanyaan Umum" [level=2] [ref=e485]
+        - paragraph [ref=e486]: Jawaban untuk pertanyaan yang sering diajukan
+      - generic [ref=e487]:
+        - group [ref=e488]:
+          - generic "Bagaimana cara mendaftar di TenderPro?" [ref=e489] [cursor=pointer]:
+            - generic [ref=e490]: Bagaimana cara mendaftar di TenderPro?
+            - img [ref=e491]
+        - group [ref=e493]:
+          - generic "Apakah ada biaya pendaftaran?" [ref=e494] [cursor=pointer]:
+            - generic [ref=e495]: Apakah ada biaya pendaftaran?
+            - img [ref=e496]
+        - group [ref=e498]:
+          - generic "Bagaimana proses verifikasi akun?" [ref=e499] [cursor=pointer]:
+            - generic [ref=e500]: Bagaimana proses verifikasi akun?
+            - img [ref=e501]
+        - group [ref=e503]:
+          - generic "Bagaimana jika terjadi sengketa dengan kontraktor?" [ref=e504] [cursor=pointer]:
+            - generic [ref=e505]: Bagaimana jika terjadi sengketa dengan kontraktor?
+            - img [ref=e506]
+        - group [ref=e508]:
+          - generic "Apa jaminan keamanan pembayaran?" [ref=e509] [cursor=pointer]:
+            - generic [ref=e510]: Apa jaminan keamanan pembayaran?
+            - img [ref=e511]
+        - group [ref=e513]:
+          - generic "Bagaimana cara memilih kontraktor yang tepat?" [ref=e514] [cursor=pointer]:
+            - generic [ref=e515]: Bagaimana cara memilih kontraktor yang tepat?
+            - img [ref=e516]
+    - generic [ref=e519]:
+      - heading "Siap Memulai Proyek Anda?" [level=2] [ref=e520]
+      - paragraph [ref=e521]: Bergabung dengan ribuan pemilik proyek dan kontraktor yang telah mempercayai TenderPro
+      - generic [ref=e522]:
+        - button "Daftar sebagai Pemilik Proyek" [ref=e523]:
+          - img
+          - text: Daftar sebagai Pemilik Proyek
+        - button "Daftar sebagai Kontraktor" [ref=e524]:
+          - img
+          - text: Daftar sebagai Kontraktor
+      - generic [ref=e525]:
+        - generic [ref=e526]:
+          - img [ref=e527]
+          - generic [ref=e530]: Gratis Mendaftar
+        - generic [ref=e531]:
+          - img [ref=e532]
+          - generic [ref=e535]: Proses Cepat
+        - generic [ref=e536]:
+          - img [ref=e537]
+          - generic [ref=e540]: Transaksi Aman
+    - contentinfo [ref=e541]:
+      - generic [ref=e542]:
+        - generic [ref=e543]:
+          - generic [ref=e544]:
+            - generic [ref=e545]:
+              - img "TenderPro" [ref=e546]
+              - generic [ref=e547]: TenderPro
+            - paragraph [ref=e548]: Platform penghubung kontraktor dan pemilik proyek konstruksi terpercaya di Indonesia.
+          - generic [ref=e549]:
+            - heading "Tautan Cepat" [level=4] [ref=e550]
+            - list [ref=e551]:
+              - listitem [ref=e552]:
+                - link "Kontraktor" [ref=e553] [cursor=pointer]:
+                  - /url: "#contractors"
+              - listitem [ref=e554]:
+                - link "Proyek" [ref=e555] [cursor=pointer]:
+                  - /url: "#projects"
+              - listitem [ref=e556]:
+                - link "Cara Kerja" [ref=e557] [cursor=pointer]:
+                  - /url: "#how-it-works"
+          - generic [ref=e558]:
+            - heading "Kategori Proyek" [level=4] [ref=e559]
+            - list [ref=e560]:
+              - listitem [ref=e561]:
+                - link "Pembangunan Rumah" [ref=e562] [cursor=pointer]:
+                  - /url: "#"
+              - listitem [ref=e563]:
+                - link "Renovasi" [ref=e564] [cursor=pointer]:
+                  - /url: "#"
+              - listitem [ref=e565]:
+                - link "Komersial" [ref=e566] [cursor=pointer]:
+                  - /url: "#"
+          - generic [ref=e567]:
+            - heading "Kontak" [level=4] [ref=e568]
+            - list [ref=e569]:
+              - listitem [ref=e570]:
+                - img [ref=e571]
+                - generic [ref=e574]: info@tenderpro.id
+              - listitem [ref=e575]:
+                - img [ref=e576]
+                - generic [ref=e578]: 021-12345678
+              - listitem [ref=e579]:
+                - img [ref=e580]
+                - generic [ref=e583]: Jakarta, Indonesia
+        - paragraph [ref=e585]: © 2024 TenderPro. Semua hak dilindungi undang-undang.
+  - region "Notifications (F8)":
+    - list
+  - generic [ref=e590] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e591]:
+      - img [ref=e592]
+    - generic [ref=e595]:
+      - button "Open issues overlay" [ref=e596]:
+        - generic [ref=e597]:
+          - generic [ref=e598]: "0"
+          - generic [ref=e599]: "1"
+        - generic [ref=e600]: Issue
+      - button "Collapse issues badge" [ref=e601]:
+        - img [ref=e602]
+  - alert [ref=e604]
+```

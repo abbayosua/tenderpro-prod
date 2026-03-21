@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { toast } from 'sonner';
 import type {
   Contractor,
@@ -19,10 +19,62 @@ import type {
 // TYPES
 // =============================================================================
 
+export interface SpendingCategoryData {
+  name: string;
+  budget: number;
+  spent: number;
+  percentage: number;
+}
+
+export interface MonthlyProgressData {
+  month: string;
+  proyek: number;
+  selesai: number;
+  completionRate: number;
+}
+
+export interface CompletionTrend {
+  direction: 'up' | 'down' | 'stable';
+  value: number;
+  avgCompletion: number;
+}
+
 export interface ChartData {
   categoryData: Array<{ name: string; value: number; count: number }>;
-  monthlyProgressData: Array<{ month: string; proyek: number; selesai: number }>;
+  spendingCategoryData?: SpendingCategoryData[];
+  monthlyProgressData: MonthlyProgressData[];
+  completionTrend?: CompletionTrend;
   trends: { projectTrend: number; bidTrend: number };
+}
+
+export interface ContractorChartData {
+  totalBids: number;
+  acceptedBids: number;
+  rejectedBids: number;
+  pendingBids: number;
+  overallWinRate: number;
+  monthlyBidSubmissions: Array<{
+    month: string;
+    total: number;
+    accepted: number;
+    rejected: number;
+    pending: number;
+    winRate: number;
+  }>;
+  winRateTrend: {
+    direction: 'up' | 'down' | 'stable';
+    value: number;
+    current: number;
+    previous: number;
+  };
+  performanceComparison: {
+    accepted: number;
+    rejected: number;
+    pending: number;
+    acceptanceRate: number;
+    rejectionRate: number;
+  };
+  winRateHistory: Array<{ month: string; winRate: number }>;
 }
 
 export interface PaymentSummary {
@@ -30,6 +82,38 @@ export interface PaymentSummary {
   totalPaid: number;
   totalPending: number;
   remainingBudget: number;
+}
+
+export interface MilestoneBreakdownItem {
+  id: string;
+  title: string;
+  description: string | null;
+  amount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  status: string;
+  dueDate: string | null;
+  completedAt: string | null;
+  order: number;
+  paymentCount: number;
+  percentage: number;
+}
+
+export interface ProjectMilestoneBreakdown {
+  projectId: string;
+  projectTitle: string;
+  projectBudget: number;
+  projectStatus: string;
+  milestones: MilestoneBreakdownItem[];
+  totalMilestoneBudget: number;
+  totalMilestonePaid: number;
+  totalMilestonePending: number;
+}
+
+export interface PaymentData {
+  summary: PaymentSummary;
+  payments: Payment[];
+  milestoneBreakdown?: ProjectMilestoneBreakdown[];
 }
 
 export interface AllProjectDocument {
@@ -50,6 +134,20 @@ interface UseDashboardProps {
   user: { id: string; role: string } | null;
 }
 
+// Refresh interval type
+export type RefreshInterval = '30s' | '1m' | '5m' | 'manual';
+
+// Convert interval string to milliseconds
+function getRefreshIntervalMs(interval: RefreshInterval): number | null {
+  switch (interval) {
+    case '30s': return 30 * 1000;
+    case '1m': return 60 * 1000;
+    case '5m': return 5 * 60 * 1000;
+    case 'manual': return null;
+    default: return 60 * 1000;
+  }
+}
+
 // =============================================================================
 // HELPER HOOK: useDashboardData
 // Handles all data fetching and state management
@@ -63,6 +161,12 @@ function useDashboardData(user: { id: string; role: string } | null) {
   // --- User Stats ---
   const [ownerStats, setOwnerStats] = useState<OwnerStats | null>(null);
   const [contractorStats, setContractorStats] = useState<ContractorStats | null>(null);
+
+  // --- Auto-refresh state ---
+  const [refreshInterval, setRefreshInterval] = useState<RefreshInterval>('1m');
+  const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // --- User Documents ---
   const [documents, setDocuments] = useState<UserDocument[]>([]);
@@ -83,7 +187,11 @@ function useDashboardData(user: { id: string; role: string } | null) {
   // --- Owner-specific Data ---
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [paymentSummary, setPaymentSummary] = useState<PaymentSummary | null>(null);
+  const [milestoneBreakdown, setMilestoneBreakdown] = useState<ProjectMilestoneBreakdown[]>([]);
   const [allProjectDocuments, setAllProjectDocuments] = useState<AllProjectDocument[]>([]);
+
+  // --- Contractor-specific Data ---
+  const [contractorChartData, setContractorChartData] = useState<ContractorChartData | null>(null);
 
   const isOwner = user?.role === 'OWNER';
 
@@ -101,6 +209,7 @@ function useDashboardData(user: { id: string; role: string } | null) {
         if (!cancelled) {
           setContractors(contractorsData.contractors || []);
           setProjects(projectsData.projects || []);
+          setLastRefreshed(new Date());
         }
       } catch (error) {
         console.error('Failed to fetch public data:', error);
@@ -178,6 +287,7 @@ function useDashboardData(user: { id: string; role: string } | null) {
             if (!cancelled) {
               setPaymentSummary(data.summary);
               setPayments(data.payments || []);
+              setMilestoneBreakdown(data.milestoneBreakdown || []);
             }
           } catch (e) { console.error('Payment summary fetch failed:', e); }
         })());
@@ -190,6 +300,16 @@ function useDashboardData(user: { id: string; role: string } | null) {
             if (!cancelled) setAllProjectDocuments(data.documents || []);
           } catch (e) { console.error('Project documents fetch failed:', e); }
         })());
+      } else {
+        // Contractor-specific data
+        // Chart data for contractor performance metrics
+        promises.push((async () => {
+          try {
+            const res = await fetch(`/api/charts?userId=${user.id}`);
+            const data = await res.json();
+            if (!cancelled) setContractorChartData(data);
+          } catch (e) { console.error('Contractor chart data fetch failed:', e); }
+        })());
       }
 
       await Promise.all(promises);
@@ -198,6 +318,86 @@ function useDashboardData(user: { id: string; role: string } | null) {
     fetchAll();
     return () => { cancelled = true; };
   }, [user, isOwner]);
+
+  // Auto-refresh effect
+  useEffect(() => {
+    const intervalMs = getRefreshIntervalMs(refreshInterval);
+    
+    // Clear existing interval
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    // Don't set interval if manual or no user
+    if (!intervalMs || !user) return;
+
+    // Setup auto-refresh with visibility check
+    const refreshData = async () => {
+      // Don't refresh if document is hidden (user not on page)
+      if (document.hidden) return;
+      
+      setIsRefreshing(true);
+      try {
+        // Fetch all relevant data
+        const promises: Promise<void>[] = [];
+        
+        // Stats
+        promises.push((async () => {
+          try {
+            const res = await fetch(`/api/stats?userId=${user.id}`);
+            const data = await res.json();
+            if (isOwner) setOwnerStats(data);
+            else setContractorStats(data);
+          } catch (e) { console.error('Stats refresh failed:', e); }
+        })());
+
+        // Chart data
+        if (isOwner) {
+          promises.push((async () => {
+            try {
+              const res = await fetch(`/api/charts?userId=${user.id}`);
+              const data = await res.json();
+              setChartData(data);
+            } catch (e) { console.error('Chart refresh failed:', e); }
+          })());
+        } else {
+          promises.push((async () => {
+            try {
+              const res = await fetch(`/api/charts?userId=${user.id}`);
+              const data = await res.json();
+              setContractorChartData(data);
+            } catch (e) { console.error('Contractor chart refresh failed:', e); }
+          })());
+        }
+
+        // Notifications
+        promises.push((async () => {
+          try {
+            const res = await fetch(`/api/notifications?userId=${user.id}&limit=10`);
+            const data = await res.json();
+            setNotifications(data.notifications || []);
+            setUnreadCount(data.unreadCount || 0);
+          } catch (e) { console.error('Notifications refresh failed:', e); }
+        })());
+
+        await Promise.all(promises);
+        setLastRefreshed(new Date());
+      } finally {
+        setIsRefreshing(false);
+      }
+    };
+
+    intervalRef.current = setInterval(refreshData, intervalMs);
+
+    // Cleanup on unmount or interval change
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [refreshInterval, user, isOwner]);
 
   // --- Loaders (for manual refresh) ---
   const loadContractors = useCallback(async () => {
@@ -285,6 +485,7 @@ function useDashboardData(user: { id: string; role: string } | null) {
       const data = await res.json();
       setPaymentSummary(data.summary);
       setPayments(data.payments || []);
+      setMilestoneBreakdown(data.milestoneBreakdown || []);
     } catch (e) { console.error('Failed to fetch payment summary:', e); }
   }, [user, isOwner]);
 
@@ -297,18 +498,113 @@ function useDashboardData(user: { id: string; role: string } | null) {
     } catch (e) { console.error('Failed to fetch all project documents:', e); }
   }, [user, isOwner]);
 
+  const loadContractorChartData = useCallback(async () => {
+    if (!user || isOwner) return;
+    try {
+      const res = await fetch(`/api/charts?userId=${user.id}`);
+      const data = await res.json();
+      setContractorChartData(data);
+    } catch (e) { console.error('Failed to fetch contractor chart data:', e); }
+  }, [user, isOwner]);
+
+  // Manual refresh function
+  const refreshAllData = useCallback(async () => {
+    if (!user) return;
+    setIsRefreshing(true);
+    try {
+      const promises: Promise<void>[] = [];
+
+      // Stats
+      promises.push((async () => {
+        try {
+          const res = await fetch(`/api/stats?userId=${user.id}`);
+          const data = await res.json();
+          if (isOwner) setOwnerStats(data);
+          else setContractorStats(data);
+        } catch (e) { console.error('Stats refresh failed:', e); }
+      })());
+
+      // Notifications
+      promises.push((async () => {
+        try {
+          const res = await fetch(`/api/notifications?userId=${user.id}&limit=10`);
+          const data = await res.json();
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.unreadCount || 0);
+        } catch (e) { console.error('Notifications refresh failed:', e); }
+      })());
+
+      // Chart data
+      if (isOwner) {
+        promises.push((async () => {
+          try {
+            const res = await fetch(`/api/charts?userId=${user.id}`);
+            const data = await res.json();
+            setChartData(data);
+          } catch (e) { console.error('Chart refresh failed:', e); }
+        })());
+
+        promises.push((async () => {
+          try {
+            const res = await fetch(`/api/owner-payments?userId=${user.id}`);
+            const data = await res.json();
+            setPaymentSummary(data.summary);
+            setPayments(data.payments || []);
+            setMilestoneBreakdown(data.milestoneBreakdown || []);
+          } catch (e) { console.error('Payment refresh failed:', e); }
+        })());
+
+        promises.push((async () => {
+          try {
+            const res = await fetch(`/api/owner-documents?userId=${user.id}`);
+            const data = await res.json();
+            setAllProjectDocuments(data.documents || []);
+          } catch (e) { console.error('Documents refresh failed:', e); }
+        })());
+
+        promises.push((async () => {
+          try {
+            const res = await fetch(`/api/favorites?userId=${user.id}`);
+            const data = await res.json();
+            setFavorites(data.favorites || []);
+          } catch (e) { console.error('Favorites refresh failed:', e); }
+        })());
+      } else {
+        promises.push((async () => {
+          try {
+            const res = await fetch(`/api/charts?userId=${user.id}`);
+            const data = await res.json();
+            setContractorChartData(data);
+          } catch (e) { console.error('Contractor chart refresh failed:', e); }
+        })());
+      }
+
+      await Promise.all(promises);
+      setLastRefreshed(new Date());
+      toast.success('Data berhasil diperbarui');
+    } catch (e) {
+      console.error('Refresh failed:', e);
+      toast.error('Gagal memperbarui data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [user, isOwner]);
+
   return {
     // Data
     contractors, projects, ownerStats, contractorStats,
     notifications, unreadCount, favorites, documents,
     milestones, progressPercent, payments, projectDocuments,
-    chartData, paymentSummary, allProjectDocuments,
+    chartData, paymentSummary, milestoneBreakdown, allProjectDocuments, contractorChartData,
     // Loaders
     loadContractors, loadProjects, loadDashboardStats,
     loadMilestones, loadPayments, loadProjectDocuments,
     loadChartData, loadPaymentSummary, loadAllProjectDocuments, loadDocuments, loadFavorites,
+    loadContractorChartData,
     // Setters (for actions to update)
     setFavorites, setNotifications, setUnreadCount,
+    // Auto-refresh
+    refreshInterval, setRefreshInterval, lastRefreshed, isRefreshing, refreshAllData,
   };
 }
 
@@ -567,7 +863,9 @@ export function useDashboard({ user }: UseDashboardProps) {
     progressPercent: data.progressPercent,
     chartData: data.chartData,
     paymentSummary: data.paymentSummary,
+    milestoneBreakdown: data.milestoneBreakdown,
     allProjectDocuments: data.allProjectDocuments,
+    contractorChartData: data.contractorChartData,
     // Loaders
     loadContractors: data.loadContractors,
     loadProjects: data.loadProjects,
@@ -578,6 +876,13 @@ export function useDashboard({ user }: UseDashboardProps) {
     loadChartData: data.loadChartData,
     loadPaymentSummary: data.loadPaymentSummary,
     loadAllProjectDocuments: data.loadAllProjectDocuments,
+    loadContractorChartData: data.loadContractorChartData,
+    // Auto-refresh
+    refreshInterval: data.refreshInterval,
+    setRefreshInterval: data.setRefreshInterval,
+    lastRefreshed: data.lastRefreshed,
+    isRefreshing: data.isRefreshing,
+    refreshAllData: data.refreshAllData,
     // Actions
     handleAcceptBid,
     handleRejectBid,

@@ -6,12 +6,12 @@ import { ChartContainer } from '@/components/ui/chart';
 import {
   ChartTooltip, ChartTooltipContent, type ChartConfig
 } from '@/components/ui/chart';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend, ComposedChart } from 'recharts';
 import {
   Building2, Star, MapPin, Clock, Briefcase, CheckCircle, ChevronRight,
   FileText, Eye, Upload, Plus, DollarSign, BarChart3,
   Video, Flag, FolderOpen, Search, Scale, Heart, Zap, Trash2, Download, Calendar,
-  MessageSquare, Bell, X, User, LogOut
+  MessageSquare, Bell, X, User, LogOut, RefreshCw
 } from 'lucide-react';
 import { ChatModal } from '@/components/modals/ChatModal';
 import { toast } from 'sonner';
@@ -21,7 +21,7 @@ import { StatsCard } from '@/components/shared/StatsCard';
 import { VerificationAlert } from '@/components/shared/VerificationAlert';
 import { NotificationPanel } from '@/components/shared/NotificationPanel';
 import { WebcamUploadModal } from '@/components/modals/WebcamUploadModal';
-import type { ChartData, PaymentSummary } from '@/hooks/useDashboard';
+import type { ChartData, PaymentSummary, ProjectMilestoneBreakdown } from '@/hooks/useDashboard';
 import {
   OwnerProjectsTab,
   OwnerBidsTab,
@@ -30,7 +30,7 @@ import {
   OwnerDocumentsTab,
   OwnerPaymentsTab,
 } from './owner/tabs';
-import type { AllProjectDocument } from '@/hooks/useDashboard';
+import type { AllProjectDocument, RefreshInterval } from '@/hooks/useDashboard';
 
 // Define the props interface
 interface OwnerDashboardProps {
@@ -44,6 +44,7 @@ interface OwnerDashboardProps {
   selectedBidsForCompare: string[];
   chartData: ChartData | null;
   paymentSummary: PaymentSummary | null;
+  milestoneBreakdown?: ProjectMilestoneBreakdown[];
   allProjectDocuments: AllProjectDocument[];
   onLogout: () => void;
   onShowVerification: () => void;
@@ -61,6 +62,12 @@ interface OwnerDashboardProps {
   onUpdateMilestone: (milestoneId: string, status: string, projectId?: string) => void;
   toggleBidSelection: (bidId: string) => void;
   loadMilestones: (projectId: string) => void;
+  // Auto-refresh props
+  refreshInterval?: RefreshInterval;
+  onSetRefreshInterval?: (interval: RefreshInterval) => void;
+  lastRefreshed?: Date | null;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
 }
 
 const chartConfig: ChartConfig = {
@@ -71,6 +78,7 @@ const chartConfig: ChartConfig = {
   muted: { label: 'Lainnya', color: 'hsl(var(--muted-foreground))' },
   proyek: { label: 'Proyek Baru', color: 'hsl(var(--primary))' },
   selesai: { label: 'Proyek Selesai', color: 'hsl(var(--chart-4))' },
+  completionRate: { label: 'Tingkat Penyelesaian (%)', color: 'hsl(var(--chart-2))' },
 };
 
 const CHART_COLORS = [
@@ -92,6 +100,7 @@ export function OwnerDashboard({
   selectedBidsForCompare,
   chartData,
   paymentSummary,
+  milestoneBreakdown,
   allProjectDocuments,
   onLogout,
   onShowVerification,
@@ -109,6 +118,12 @@ export function OwnerDashboard({
   onUpdateMilestone,
   toggleBidSelection,
   loadMilestones,
+  // Auto-refresh props
+  refreshInterval = '1m',
+  onSetRefreshInterval,
+  lastRefreshed,
+  isRefreshing = false,
+  onRefresh,
 }: OwnerDashboardProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -122,6 +137,23 @@ export function OwnerDashboard({
 
   // Safe access to projects array
   const projects = ownerStats?.projects ?? [];
+
+  // Helper function to format last refreshed time
+  const formatLastRefreshed = (date: Date | null | undefined): string => {
+    if (!date) return 'Belum ada data';
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} detik lalu`;
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} menit lalu`;
+    } else {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} jam lalu`;
+    }
+  };
 
   
   // Handle document upload from webcam
@@ -175,15 +207,20 @@ export function OwnerDashboard({
   const monthlyProgressData = useMemo(() => {
     if (!chartData?.monthlyProgressData || chartData.monthlyProgressData.length === 0) {
       return [
-        { month: 'Jan', proyek: 2, selesai: 1 },
-        { month: 'Feb', proyek: 2, selesai: 2 },
-        { month: 'Mar', proyek: 4, selesai: 3 },
-        { month: 'Apr', proyek: 2, selesai: 2 },
-        { month: 'Mei', proyek: 5, selesai: 4 },
-        { month: 'Jun', proyek: 3, selesai: 3 },
+        { month: 'Jan', proyek: 2, selesai: 1, completionRate: 50 },
+        { month: 'Feb', proyek: 2, selesai: 2, completionRate: 100 },
+        { month: 'Mar', proyek: 4, selesai: 3, completionRate: 75 },
+        { month: 'Apr', proyek: 2, selesai: 2, completionRate: 100 },
+        { month: 'Mei', proyek: 5, selesai: 4, completionRate: 80 },
+        { month: 'Jun', proyek: 3, selesai: 3, completionRate: 100 },
       ];
     }
     return chartData.monthlyProgressData;
+  }, [chartData]);
+
+  // Completion trend data
+  const completionTrend = useMemo(() => {
+    return chartData?.completionTrend || { direction: 'stable', value: 0, avgCompletion: 0 };
   }, [chartData]);
 
   // Filter documents
@@ -219,6 +256,41 @@ export function OwnerDashboard({
             <span className="text-2xl font-bold text-slate-800">TenderPro</span>
           </div>
           <div className="flex items-center gap-3">
+            {/* Refresh Controls */}
+            <div className="flex items-center gap-2 mr-2">
+              {/* Last refreshed indicator */}
+              <span className="text-xs text-slate-500 hidden sm:inline">
+                Diperbarui: {formatLastRefreshed(lastRefreshed)}
+              </span>
+              
+              {/* Refresh interval selector */}
+              <Select
+                value={refreshInterval}
+                onValueChange={(value) => onSetRefreshInterval?.(value as RefreshInterval)}
+              >
+                <SelectTrigger className="w-20 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30s">30s</SelectItem>
+                  <SelectItem value="1m">1m</SelectItem>
+                  <SelectItem value="5m">5m</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Manual refresh button */}
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => onRefresh?.()}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+            
             <NotificationPanel
               notifications={notifications}
               unreadCount={unreadCount}
@@ -447,6 +519,7 @@ export function OwnerDashboard({
             <OwnerPaymentsTab
               ownerStats={ownerStats}
               paymentSummary={paymentSummary}
+              milestoneBreakdown={milestoneBreakdown}
             />
           </TabsContent>
         </Tabs>

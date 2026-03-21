@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ChartContainer } from '@/components/ui/chart';
+import {
+  ChartTooltip, ChartTooltipContent, type ChartConfig
+} from '@/components/ui/chart';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import {
   Building2, Star, MapPin, Clock, Briefcase, CheckCircle, TrendingUp,
   FileText, Eye, Upload, Plus, Search, MessageSquare, FolderOpen, LogOut,
-  User, X, Edit, Trash2, DollarSign
+  User, X, Edit, Trash2, DollarSign, TrendingDown, Minus, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ContractorStats, Project } from '@/types';
@@ -19,6 +22,7 @@ import { SimpleStatsCard } from '@/components/shared/StatsCard';
 import { VerificationAlert } from '@/components/shared/VerificationAlert';
 import { PortfolioModal } from '@/components/modals/PortfolioModal';
 import { ChatModal } from '@/components/modals/ChatModal';
+import type { ContractorChartData, RefreshInterval } from '@/hooks/useDashboard';
 
 interface Portfolio {
   id: string;
@@ -36,17 +40,31 @@ interface Portfolio {
 interface ContractorDashboardProps {
   user: { id: string; name: string; verificationStatus: string };
   contractorStats: ContractorStats;
+  contractorChartData?: ContractorChartData | null;
   onLogout: () => void;
   onShowVerification: () => void;
   onShowBidModal: (project: Project) => void;
+  // Auto-refresh props
+  refreshInterval?: RefreshInterval;
+  onSetRefreshInterval?: (interval: RefreshInterval) => void;
+  lastRefreshed?: Date | null;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
 }
 
 export function ContractorDashboard({
   user,
   contractorStats,
+  contractorChartData,
   onLogout,
   onShowVerification,
   onShowBidModal,
+  // Auto-refresh props
+  refreshInterval = '1m',
+  onSetRefreshInterval,
+  lastRefreshed,
+  isRefreshing = false,
+  onRefresh,
 }: ContractorDashboardProps) {
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loadingPortfolios, setLoadingPortfolios] = useState(true);
@@ -56,6 +74,79 @@ export function ContractorDashboard({
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [withdrawConfirmBid, setWithdrawConfirmBid] = useState<{ id: string; title: string } | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
+
+  // Chart configuration for contractor performance
+  const chartConfig: ChartConfig = {
+    accepted: { label: 'Diterima', color: 'hsl(var(--chart-4))' },
+    rejected: { label: 'Ditolak', color: 'hsl(var(--destructive))' },
+    pending: { label: 'Pending', color: 'hsl(var(--chart-5))' },
+    winRate: { label: 'Win Rate (%)', color: 'hsl(var(--primary))' },
+    total: { label: 'Total Penawaran', color: 'hsl(var(--primary))' },
+  };
+
+  const CHART_COLORS = [
+    'hsl(var(--chart-4))', // accepted - green-ish
+    'hsl(var(--destructive))', // rejected - red
+    'hsl(var(--chart-5))', // pending - yellow
+  ];
+
+  // Memoize chart data transformations
+  const bidStatusData = useMemo(() => {
+    if (!contractorChartData) {
+      return [
+        { name: 'Diterima', value: 0, fill: CHART_COLORS[0] },
+        { name: 'Ditolak', value: 0, fill: CHART_COLORS[1] },
+        { name: 'Pending', value: 0, fill: CHART_COLORS[2] },
+      ];
+    }
+    return [
+      { name: 'Diterima', value: contractorChartData.acceptedBids, fill: CHART_COLORS[0] },
+      { name: 'Ditolak', value: contractorChartData.rejectedBids, fill: CHART_COLORS[1] },
+      { name: 'Pending', value: contractorChartData.pendingBids, fill: CHART_COLORS[2] },
+    ];
+  }, [contractorChartData]);
+
+  const monthlyBidData = useMemo(() => {
+    if (!contractorChartData?.monthlyBidSubmissions) {
+      return [];
+    }
+    return contractorChartData.monthlyBidSubmissions;
+  }, [contractorChartData]);
+
+  const winRateHistoryData = useMemo(() => {
+    if (!contractorChartData?.winRateHistory) {
+      return [];
+    }
+    return contractorChartData.winRateHistory;
+  }, [contractorChartData]);
+
+  const performanceData = useMemo(() => {
+    if (!contractorChartData?.performanceComparison) {
+      return null;
+    }
+    return contractorChartData.performanceComparison;
+  }, [contractorChartData]);
+
+  const winRateTrend = useMemo(() => {
+    return contractorChartData?.winRateTrend || { direction: 'stable', value: 0, current: 0, previous: 0 };
+  }, [contractorChartData]);
+
+  // Helper function to format last refreshed time
+  const formatLastRefreshed = (date: Date | null | undefined): string => {
+    if (!date) return 'Belum ada data';
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} detik lalu`;
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} menit lalu`;
+    } else {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} jam lalu`;
+    }
+  };
 
   // Load portfolios
   const loadPortfolios = useCallback(async () => {
@@ -146,6 +237,41 @@ export function ContractorDashboard({
             <span className="text-2xl font-bold text-slate-800">TenderPro</span>
           </div>
           <div className="flex items-center gap-4">
+            {/* Refresh Controls */}
+            <div className="flex items-center gap-2 mr-2">
+              {/* Last refreshed indicator */}
+              <span className="text-xs text-slate-500 hidden sm:inline">
+                Diperbarui: {formatLastRefreshed(lastRefreshed)}
+              </span>
+              
+              {/* Refresh interval selector */}
+              <Select
+                value={refreshInterval}
+                onValueChange={(value) => onSetRefreshInterval?.(value as RefreshInterval)}
+              >
+                <SelectTrigger className="w-20 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="30s">30s</SelectItem>
+                  <SelectItem value="1m">1m</SelectItem>
+                  <SelectItem value="5m">5m</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Manual refresh button */}
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => onRefresh?.()}
+                disabled={isRefreshing}
+              >
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+            
             <Button variant="ghost" size="icon" onClick={() => setChatModalOpen(true)}>
               <MessageSquare className="h-5 w-5" />
             </Button>
@@ -183,6 +309,192 @@ export function ContractorDashboard({
             <Upload className="h-4 w-4 mr-2" /> Verifikasi Akun
           </Button>
         </div>
+
+        {/* Performance Charts Section */}
+        {contractorChartData && (
+          <>
+            {/* Win Rate Trend Card */}
+            <Card className="mb-6">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      {winRateTrend.direction === 'up' ? (
+                        <TrendingUp className="h-5 w-5 text-green-500" />
+                      ) : winRateTrend.direction === 'down' ? (
+                        <TrendingDown className="h-5 w-5 text-red-500" />
+                      ) : (
+                        <Minus className="h-5 w-5 text-slate-400" />
+                      )}
+                      Tren Win Rate
+                    </CardTitle>
+                    <CardDescription>
+                      Perbandingan win rate 3 bulan terakhir vs 3 bulan sebelumnya
+                    </CardDescription>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-2xl font-bold ${
+                        winRateTrend.direction === 'up' ? 'text-green-500' : 
+                        winRateTrend.direction === 'down' ? 'text-red-500' : 'text-slate-600'
+                      }`}>
+                        {winRateTrend.current}%
+                      </span>
+                      {winRateTrend.direction !== 'stable' && (
+                        <Badge variant={winRateTrend.direction === 'up' ? 'default' : 'destructive'} className="text-xs">
+                          {winRateTrend.direction === 'up' ? '+' : ''}{winRateTrend.value}%
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500">dari {winRateTrend.previous}% sebelumnya</p>
+                  </div>
+                </div>
+              </CardHeader>
+            </Card>
+
+            {/* Charts Grid */}
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
+              {/* Win Rate History Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Riwayat Win Rate</CardTitle>
+                  <CardDescription>Win rate bulanan dalam 6 bulan terakhir</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={chartConfig} className="h-64">
+                    <LineChart data={winRateHistoryData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                      <YAxis tickLine={false} axisLine={false} domain={[0, 100]} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line
+                        type="monotone"
+                        dataKey="winRate"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={2}
+                        dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2 }}
+                        name="winRate"
+                      />
+                    </LineChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+
+              {/* Bid Status Distribution Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Distribusi Status Penawaran</CardTitle>
+                  <CardDescription>Total penawaran berdasarkan status</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <ChartContainer config={chartConfig} className="h-64">
+                    <PieChart>
+                      <Pie
+                        data={bidStatusData}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={false}
+                      >
+                        {bidStatusData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                    </PieChart>
+                  </ChartContainer>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Monthly Bid Submissions Chart */}
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="text-lg">Penawaran Bulanan</CardTitle>
+                <CardDescription>Jumlah penawaran yang diajukan per bulan</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-64">
+                  <BarChart data={monthlyBidData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                    <YAxis tickLine={false} axisLine={false} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Legend />
+                    <Bar dataKey="accepted" name="Diterima" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="rejected" name="Ditolak" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="pending" name="Pending" fill="hsl(var(--chart-5))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+
+            {/* Performance Comparison Cards */}
+            {performanceData && (
+              <div className="grid md:grid-cols-4 gap-4 mb-8">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-lg">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Diterima</p>
+                        <p className="text-xl font-bold text-green-600">{performanceData.accepted}</p>
+                        <p className="text-xs text-slate-400">{performanceData.acceptanceRate}% rate</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-red-100 rounded-lg">
+                        <X className="h-5 w-5 text-red-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Ditolak</p>
+                        <p className="text-xl font-bold text-red-600">{performanceData.rejected}</p>
+                        <p className="text-xs text-slate-400">{performanceData.rejectionRate}% rate</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-yellow-100 rounded-lg">
+                        <Clock className="h-5 w-5 text-yellow-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Pending</p>
+                        <p className="text-xl font-bold text-yellow-600">{performanceData.pending}</p>
+                        <p className="text-xs text-slate-400">Menunggu</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-primary/10 rounded-lg">
+                        <TrendingUp className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-500">Win Rate</p>
+                        <p className="text-xl font-bold text-primary">{contractorChartData.overallWinRate}%</p>
+                        <p className="text-xs text-slate-400">Keseluruhan</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </>
+        )}
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="bids" className="w-full">

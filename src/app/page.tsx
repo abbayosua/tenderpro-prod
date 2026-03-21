@@ -261,6 +261,7 @@ export default function TenderProApp() {
           selectedBidsForCompare={selectedBidsForCompare}
           chartData={dashboard.chartData}
           paymentSummary={dashboard.paymentSummary}
+          milestoneBreakdown={dashboard.milestoneBreakdown}
           allProjectDocuments={dashboard.allProjectDocuments}
           onLogout={handleLogout}
           onShowVerification={() => setVerificationOpen(true)}
@@ -285,6 +286,12 @@ export default function TenderProApp() {
           onUpdateMilestone={dashboard.handleUpdateMilestone}
           toggleBidSelection={toggleBidSelection}
           loadMilestones={dashboard.loadMilestones}
+          // Auto-refresh props
+          refreshInterval={dashboard.refreshInterval}
+          onSetRefreshInterval={dashboard.setRefreshInterval}
+          lastRefreshed={dashboard.lastRefreshed}
+          isRefreshing={dashboard.isRefreshing}
+          onRefresh={dashboard.refreshAllData}
         />
         <CreateProjectModal
           open={createProjectOpen}
@@ -344,12 +351,19 @@ export default function TenderProApp() {
         <ContractorDashboard
           user={user}
           contractorStats={dashboard.contractorStats}
+          contractorChartData={dashboard.contractorChartData}
           onLogout={handleLogout}
           onShowVerification={() => setVerificationOpen(true)}
           onShowBidModal={(project) => {
             // For contractor to bid on projects - can be implemented later
             toast.info('Fitur bid proyek akan segera tersedia');
           }}
+          // Auto-refresh props
+          refreshInterval={dashboard.refreshInterval}
+          onSetRefreshInterval={dashboard.setRefreshInterval}
+          lastRefreshed={dashboard.lastRefreshed}
+          isRefreshing={dashboard.isRefreshing}
+          onRefresh={dashboard.refreshAllData}
         />
         <VerificationModal
           open={verificationOpen}

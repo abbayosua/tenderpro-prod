@@ -1,5 +1,6 @@
 import { OwnerStats, Bid, Milestone, Favorite } from '@/types';
-import type { PaymentSummary } from '@/hooks/useDashboard';
+import type { PaymentSummary, SpendingCategoryData } from '@/hooks/useDashboard';
+import type { BudgetAlertData, BudgetAlertThresholds } from '@/components/shared/BudgetAlert';
 
 export interface OwnerProject {
   id: string;
@@ -25,6 +26,33 @@ export interface OwnerDocument {
   createdAt: Date;
   viewCount?: number;
   downloadCount?: number;
+}
+
+// Milestone breakdown types
+export interface MilestoneBreakdownItem {
+  id: string;
+  title: string;
+  description: string | null;
+  amount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  status: string;
+  dueDate: string | null;
+  completedAt: string | null;
+  order: number;
+  paymentCount: number;
+  percentage: number;
+}
+
+export interface ProjectMilestoneBreakdown {
+  projectId: string;
+  projectTitle: string;
+  projectBudget: number;
+  projectStatus: string;
+  milestones: MilestoneBreakdownItem[];
+  totalMilestoneBudget: number;
+  totalMilestonePaid: number;
+  totalMilestonePending: number;
 }
 
 // Shared props for tabs that need ownerStats and actions
@@ -79,4 +107,9 @@ export interface OwnerDocumentsTabProps {
 export interface OwnerPaymentsTabProps {
   ownerStats: OwnerStats;
   paymentSummary: PaymentSummary | null;
+  spendingCategoryData?: SpendingCategoryData[];
+  budgetAlerts?: BudgetAlertData[];
+  alertThresholds?: BudgetAlertThresholds;
+  onAlertThresholdsChange?: (thresholds: BudgetAlertThresholds) => void;
+  milestoneBreakdown?: ProjectMilestoneBreakdown[];
 }

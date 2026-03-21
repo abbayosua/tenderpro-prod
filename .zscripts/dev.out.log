@@ -4208,3 +4208,13 @@ bun install v1.3.10 (30e609e0)
 error: Failed to link @babel/parser: EEXIST
 
 error: Failed to link json5: EEXIST
+==========================================
+[2026-03-21 05:00:57] Starting: bun install
+==========================================
+[BUN] Installing dependencies...
+[0.03ms] ".env"
+bun install v1.3.10 (30e609e0)
+
+$ prisma generate
+Failed to load config file "/home/z/my-project" as a TypeScript/JavaScript module. Error: Error: ENOTDIR: not a directory, lstat '/home/z/my-project/.config/prisma'
+error: postinstall script from "nextjs_tailwind_shadcn_ts" exited with 1

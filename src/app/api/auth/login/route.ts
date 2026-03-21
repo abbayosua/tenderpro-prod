@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { db } from '@/lib/db';
+import { generateAccessToken } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -38,6 +39,13 @@ export async function POST(request: NextRequest) {
 
     const { password: _, ...userWithoutPassword } = user;
 
+    // Generate JWT token
+    const token = await generateAccessToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
     return NextResponse.json({
       success: true,
       user: {
@@ -51,7 +59,7 @@ export async function POST(request: NextRequest) {
         verificationStatus: userWithoutPassword.verificationStatus,
       },
       profile: userWithoutPassword.contractor || userWithoutPassword.owner,
-      token: `token-${user.id}-${Date.now()}`,
+      token,
     });
   } catch (error) {
     console.error('Login error:', error);

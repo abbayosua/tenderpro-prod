@@ -23,17 +23,3 @@ export {
   type Partner,
   type FAQItem,
 } from './landing';
-
-// Document data
-export {
-  mockDocuments,
-  mockDocumentsData,
-  type MockDocument,
-} from './documents';
-
-// Payment data
-export {
-  mockPaymentHistory,
-  paymentHistoryData,
-  type MockPayment,
-} from './payments';

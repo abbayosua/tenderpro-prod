@@ -5,7 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Building2, Star, MapPin, Briefcase, CheckCircle,
-  User, UserPlus, Eye
+  User, UserPlus, Eye, Calculator, Sparkles, Globe,
+  FileCheck, Shield, Award, Lightbulb, TrendingUp, Info
 } from 'lucide-react';
 import { Contractor, Project } from '@/types';
 import { formatRupiah } from '@/lib/helpers';
@@ -23,6 +24,12 @@ import {
   FooterSection,
 } from './sections';
 
+interface LocalContractor extends Contractor {
+  isLocal?: boolean;
+  certifications?: Array<{ type: string; isVerified: boolean }>;
+  badges?: Array<{ type: string; label: string; icon: string }>;
+}
+
 interface LandingPageProps {
   user: { name: string } | null;
   contractors: Contractor[];
@@ -33,6 +40,8 @@ interface LandingPageProps {
   onRegister: (role: 'OWNER' | 'CONTRACTOR') => void;
   onLogout: () => void;
   onDashboard: () => void;
+  onShowCostEstimator?: () => void;
+  localContractors?: LocalContractor[];
 }
 
 export function LandingPage({
@@ -45,6 +54,8 @@ export function LandingPage({
   onRegister,
   onLogout,
   onDashboard,
+  onShowCostEstimator,
+  localContractors = [],
 }: LandingPageProps) {
   return (
     <div className="min-h-screen bg-white relative">
@@ -59,7 +70,13 @@ export function LandingPage({
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#contractors" className="text-slate-600 hover:text-primary transition-colors">Kontraktor</a>
+            <a href="#local-contractors" className="text-slate-600 hover:text-green-600 transition-colors flex items-center gap-1">
+              <Globe className="h-4 w-4" /> Lokal
+            </a>
             <a href="#projects" className="text-slate-600 hover:text-primary transition-colors">Proyek</a>
+            <a href="#cost-estimator" className="text-slate-600 hover:text-primary transition-colors flex items-center gap-1">
+              <Calculator className="h-4 w-4" /> Estimasi
+            </a>
             <a href="#how-it-works" className="text-slate-600 hover:text-primary transition-colors">Cara Kerja</a>
           </nav>
           <div className="flex items-center gap-3">
@@ -128,6 +145,159 @@ export function LandingPage({
                 </CardFooter>
               </Card>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Local Contractor Highlight Section */}
+      <section id="local-contractors" className="relative z-10 py-16 bg-gradient-to-r from-green-50 to-emerald-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 rounded-full px-4 py-2 mb-4">
+              <Globe className="h-5 w-5" />
+              <span className="font-semibold text-sm">Dukung Kontraktor Indonesia</span>
+            </div>
+            <h2 className="text-3xl font-bold text-slate-800 mb-2">Kontraktor Lokal Indonesia</h2>
+            <p className="text-slate-600 max-w-2xl mx-auto">
+              Kontraktor dengan sertifikasi Indonesia yang terverifikasi. Prioritaskan kontraktor lokal untuk mendukung perekonomian bangsa.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <Card className="border-green-200 bg-white shadow-sm">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Shield className="h-6 w-6 text-green-600" />
+                </div>
+                <h3 className="font-bold text-slate-800 mb-1">Sertifikasi Resmi</h3>
+                <p className="text-sm text-slate-600">SIUJK, SBU, SKA, SKT - sertifikasi resmi dari lembaga pemerintah Indonesia</p>
+              </CardContent>
+            </Card>
+            <Card className="border-green-200 bg-white shadow-sm">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Award className="h-6 w-6 text-green-600" />
+                </div>
+                <h3 className="font-bold text-slate-800 mb-1">Badge Penghargaan</h3>
+                <p className="text-sm text-slate-600">Sistem badge untuk mengakui keunggulan kontraktor lokal Indonesia</p>
+              </CardContent>
+            </Card>
+            <Card className="border-green-200 bg-white shadow-sm">
+              <CardContent className="p-6 text-center">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <TrendingUp className="h-6 w-6 text-green-600" />
+                </div>
+                <h3 className="font-bold text-slate-800 mb-1">Prioritas Lokal</h3>
+                <p className="text-sm text-slate-600">Kontraktor lokal mendapat prioritas tampilan di pencarian proyek</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {localContractors.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {localContractors.slice(0, 6).map((c) => (
+                <Card key={c.id} className="hover:shadow-lg transition-shadow border-green-200 bg-white">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg">{c.company?.name}</CardTitle>
+                        <CardDescription className="flex items-center gap-1 mt-1">
+                          <MapPin className="h-3 w-3" /> {c.company?.city}
+                        </CardDescription>
+                      </div>
+                      <div className="flex flex-col gap-1 items-end">
+                        {c.isLocal && (
+                          <Badge className="bg-green-600 hover:bg-green-700 text-white text-xs gap-1">
+                            <Globe className="h-3 w-3" /> Lokal
+                          </Badge>
+                        )}
+                        {c.isVerified && (
+                          <Badge className="bg-primary text-xs gap-1">
+                            <CheckCircle className="h-3 w-3" /> Terverifikasi
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                      <span className="font-medium">{c.company?.rating || '0'}</span>
+                      <span className="text-slate-500 text-sm">({c.company?.totalProjects} proyek)</span>
+                    </div>
+                    {c.certifications && c.certifications.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {c.certifications.slice(0, 3).map((cert, i) => (
+                          <Badge key={i} variant="secondary" className="text-xs bg-blue-50 text-blue-700 gap-1">
+                            <FileCheck className="h-3 w-3" /> {cert.type}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    {c.badges && c.badges.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {c.badges.slice(0, 3).map((badge, i) => (
+                          <Badge key={i} variant="outline" className="text-xs">
+                            {badge.icon} {badge.label}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter className="bg-green-50/50 border-t border-green-100">
+                    <Button variant="ghost" size="sm" className="w-full text-green-700 hover:text-green-800 hover:bg-green-50" onClick={() => setSelectedContractor(c)}>
+                      Lihat Profil Lengkap
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-white rounded-lg border border-green-200">
+              <Building2 className="h-12 w-12 text-green-300 mx-auto mb-3" />
+              <p className="text-slate-500 mb-1">Belum ada kontraktor lokal terdaftar</p>
+              <p className="text-sm text-slate-400">Kontraktor dengan sertifikasi Indonesia akan ditampilkan di sini</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Cost Estimator CTA Section */}
+      <section id="cost-estimator" className="relative z-10 py-16 bg-white">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="bg-gradient-to-r from-primary/5 via-purple-50 to-primary/5 rounded-2xl p-8 md:p-12 border border-primary/10">
+            <div className="text-center max-w-2xl mx-auto">
+              <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-2 mb-4">
+                <Sparkles className="h-5 w-5" />
+                <span className="font-semibold text-sm">Fitur AI Baru</span>
+              </div>
+              <h2 className="text-3xl font-bold text-slate-800 mb-3">Kalkulator Estimasi Biaya AI</h2>
+              <p className="text-slate-600 mb-6">
+                Dapatkan estimasi biaya proyek konstruksi yang akurat dengan bantuan AI. Estimasi disesuaikan dengan harga pasar Indonesia dan merekomendasikan material lokal serta kontraktor Indonesia.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {[
+                  { icon: Calculator, label: 'Estimasi Cerdas', desc: 'AI analisis harga pasar' },
+                  { icon: Globe, label: 'Harga Lokal', desc: 'Sesuai pasar Indonesia' },
+                  { icon: Lightbulb, label: 'Tips Eksklusif', desc: 'Rekomendasi ahli' },
+                  { icon: TrendingUp, label: 'Rincian Lengkap', desc: 'Breakdown biaya detail' },
+                ].map((item) => (
+                  <div key={item.label} className="text-center p-3 bg-white rounded-lg shadow-sm">
+                    <item.icon className="h-5 w-5 text-primary mx-auto mb-1" />
+                    <p className="text-xs font-semibold">{item.label}</p>
+                    <p className="text-xs text-slate-500">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+              <Button
+                size="lg"
+                className="bg-primary hover:bg-primary/90 h-12 px-8 text-base"
+                onClick={onShowCostEstimator}
+              >
+                <Sparkles className="h-5 w-5 mr-2" /> Hitung Estimasi Biaya Sekarang
+              </Button>
+              <p className="text-xs text-slate-400 mt-3">Gratis - Tanpa perlu mendaftar</p>
+            </div>
           </div>
         </div>
       </section>

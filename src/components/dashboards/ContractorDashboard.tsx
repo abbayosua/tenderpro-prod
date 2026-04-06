@@ -13,7 +13,8 @@ import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineCh
 import {
   Building2, Star, MapPin, Clock, Briefcase, CheckCircle, TrendingUp,
   FileText, Eye, Upload, Plus, Search, MessageSquare, FolderOpen, LogOut,
-  User, X, Edit, Trash2, DollarSign, TrendingDown, Minus, RefreshCw
+  User, X, Edit, Trash2, DollarSign, TrendingDown, Minus, RefreshCw,
+  Sparkles, Zap, Shield, Target, Award, ChevronDown, ChevronUp, ChevronRight, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ContractorStats, Project } from '@/types';
@@ -37,13 +38,20 @@ interface Portfolio {
   createdAt: Date;
 }
 
+interface AIRecommendation {
+  suggestedPrice: string;
+  suggestedDuration: string;
+  proposalTemplate: string;
+  keyPoints: string[];
+}
+
 interface ContractorDashboardProps {
   user: { id: string; name: string; verificationStatus: string };
   contractorStats: ContractorStats;
   contractorChartData?: ContractorChartData | null;
   onLogout: () => void;
   onShowVerification: () => void;
-  onShowBidModal: (project: Project) => void;
+  onShowBidModal: (project: Project, prefillData?: { proposal: string; price: string; duration: string }) => void;
   // Auto-refresh props
   refreshInterval?: RefreshInterval;
   onSetRefreshInterval?: (interval: RefreshInterval) => void;
@@ -74,6 +82,26 @@ export function ContractorDashboard({
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [withdrawConfirmBid, setWithdrawConfirmBid] = useState<{ id: string; title: string } | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
+
+  // AI Bid Assistant state
+  const [aiLoading, setAiLoading] = useState<string | null>(null); // project ID being loaded
+  const [aiRecommendation, setAiRecommendation] = useState<Record<string, AIRecommendation>>({});
+  const [expandedAiCard, setExpandedAiCard] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterBudgetRange, setFilterBudgetRange] = useState<'all' | 'low' | 'mid' | 'high'>('all');
+  const [searchResults, setSearchResults] = useState<Array<{
+    id: string;
+    title: string;
+    category: string;
+    location: string;
+    budget: number;
+    duration?: number;
+    bidCount: number;
+    hasBid: boolean;
+    owner: { name: string; company?: string };
+    description: string;
+  }>>([]);
 
   // Chart configuration for contractor performance
   const chartConfig: ChartConfig = {
@@ -497,11 +525,305 @@ export function ContractorDashboard({
         )}
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="bids" className="w-full">
+        <Tabs defaultValue="tender" className="w-full">
           <TabsList className="mb-6 flex flex-wrap">
+            <TabsTrigger value="tender"><Search className="h-4 w-4 mr-2" /> Cari Proyek</TabsTrigger>
             <TabsTrigger value="bids"><FileText className="h-4 w-4 mr-2" /> Penawaran Saya</TabsTrigger>
             <TabsTrigger value="portfolio"><FolderOpen className="h-4 w-4 mr-2" /> Portofolio</TabsTrigger>
           </TabsList>
+
+          {/* Cari Proyek (Find Projects) Tab */}
+          <TabsContent value="tender">
+            {/* Search & Filters */}
+            <Card className="mb-6">
+              <CardContent className="p-4">
+                <div className="flex flex-col md:flex-row gap-3">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input
+                      placeholder="Cari proyek berdasarkan nama, deskripsi, atau lokasi..."
+                      className="pl-10"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Select value={filterCategory} onValueChange={(v) => setFilterCategory(v)}>
+                    <SelectTrigger className="w-full md:w-48">
+                      <SelectValue placeholder="Semua Kategori" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Kategori</SelectItem>
+                      <SelectItem value="Pembangunan Baru">Pembangunan Baru</SelectItem>
+                      <SelectItem value="Renovasi">Renovasi</SelectItem>
+                      <SelectItem value="Interior">Interior</SelectItem>
+                      <SelectItem value="Konstruksi">Konstruksi</SelectItem>
+                      <SelectItem value="MEP">MEP</SelectItem>
+                      <SelectItem value="Lainnya">Lainnya</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Select value={filterBudgetRange} onValueChange={(v) => setFilterBudgetRange(v as 'all' | 'low' | 'mid' | 'high')}>
+                    <SelectTrigger className="w-full md:w-44">
+                      <SelectValue placeholder="Semua Budget" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Semua Budget</SelectItem>
+                      <SelectItem value="low">&lt; 100 Juta</SelectItem>
+                      <SelectItem value="mid">100-500 Juta</SelectItem>
+                      <SelectItem value="high">&gt; 500 Juta</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    className="bg-primary hover:bg-primary/90 whitespace-nowrap"
+                    onClick={async () => {
+                      try {
+                        const body: Record<string, unknown> = {};
+                        if (searchQuery.trim()) body.query = searchQuery.trim();
+                        if (filterCategory && filterCategory !== 'all') body.categories = [filterCategory];
+                        if (filterBudgetRange !== 'all') {
+                          if (filterBudgetRange === 'low') { body.budgetMax = 100000000; }
+                          else if (filterBudgetRange === 'mid') { body.budgetMin = 100000000; body.budgetMax = 500000000; }
+                          else { body.budgetMin = 500000000; }
+                        }
+                        body.sortBy = 'newest';
+                        body.page = 1;
+                        body.limit = 20;
+                        const res = await fetch('/api/projects/search', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(body),
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          setSearchResults(data.projects || []);
+                        }
+                      } catch { toast.error('Gagal mencari proyek'); }
+                    }}
+                  >
+                    <Search className="h-4 w-4 mr-2" /> Cari
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Projects List with AI Bid Assistant */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  Proyek Tersedia dengan AI Bid Assistant
+                </CardTitle>
+                <CardDescription>
+                  Temukan proyek yang sesuai dan dapatkan rekomendasi penawaran dari AI untuk meningkatkan peluang menang
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6">
+                {searchResults.length === 0 && contractorStats.availableProjects.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Search className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+                    <p className="text-slate-500 mb-4">Tidak ada proyek tersedia saat ini</p>
+                    <p className="text-sm text-slate-400">Gunakan filter di atas untuk mencari proyek atau coba lagi nanti</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                    {(searchResults.length > 0 ? searchResults : contractorStats.availableProjects).map((project) => (
+                      <div key={project.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
+                        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-semibold text-base">{project.title}</h4>
+                              {project.hasBid && (
+                                <Badge className="bg-yellow-100 text-yellow-700 text-xs">Sudah Bid</Badge>
+                              )}
+                            </div>
+                            <p className="text-sm text-slate-500 flex items-center gap-2 flex-wrap">
+                              <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {project.location}</span>
+                              <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" /> {project.category}</span>
+                            </p>
+                            <p className="text-sm text-slate-500 mt-1">
+                              <span className="font-medium text-primary">{formatRupiah(project.budget)}</span>
+                              {project.duration && <span className="ml-3"><Clock className="h-3 w-3 inline mr-1" />{project.duration} hari</span>}
+                              <span className="ml-3">{project.bidCount} penawaran</span>
+                            </p>
+                            <p className="text-xs text-slate-400 mt-1">Pemilik: {project.owner.name}{project.owner.company ? ` (${project.owner.company})` : ''}</p>
+                          </div>
+                          <div className="flex gap-2 flex-shrink-0">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-primary border-primary hover:bg-primary/5"
+                              disabled={!!aiLoading}
+                              onClick={async () => {
+                                setAiLoading(project.id);
+                                try {
+                                  const res = await fetch('/api/ai/bid-assistant', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      projectId: project.id,
+                                      contractorId: user.id,
+                                      projectBudget: project.budget,
+                                      projectDescription: project.description || project.title,
+                                      projectRequirements: project.category,
+                                      contractorExperience: 3,
+                                    }),
+                                  });
+                                  const data = await res.json();
+                                  if (data.success && data.recommendation) {
+                                    setAiRecommendation(prev => ({ ...prev, [project.id]: data.recommendation }));
+                                    setExpandedAiCard(project.id);
+                                    toast.success('Rekomendasi AI berhasil didapatkan!');
+                                  } else {
+                                    toast.error(data.error || 'Gagal mendapatkan rekomendasi AI');
+                                  }
+                                } catch {
+                                  toast.error('Gagal mendapatkan rekomendasi AI. Silakan coba lagi.');
+                                } finally {
+                                  setAiLoading(null);
+                                }
+                              }}
+                            >
+                              {aiLoading === project.id ? (
+                                <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Memproses...</>
+                              ) : aiRecommendation[project.id] ? (
+                                <><Sparkles className="h-3 w-3 mr-1" /> Lihat Rekomendasi</>
+                              ) : (
+                                <><Sparkles className="h-3 w-3 mr-1" /> AI Rekomendasi</>
+                              )}
+                            </Button>
+                            {!project.hasBid && (
+                              <Button
+                                size="sm"
+                                className="bg-primary hover:bg-primary/90"
+                                onClick={() => onShowBidModal(project as unknown as Project)}
+                              >
+                                <FileText className="h-3 w-3 mr-1" /> Ajukan Bid
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* AI Recommendation Card */}
+                        {aiRecommendation[project.id] && expandedAiCard === project.id && (
+                          <div className="mt-3 border border-primary/20 rounded-lg bg-gradient-to-r from-primary/5 to-purple-50 p-4">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="p-1.5 bg-primary/10 rounded-lg">
+                                  <Sparkles className="h-4 w-4 text-primary" />
+                                </div>
+                                <h5 className="font-semibold text-sm text-primary">Rekomendasi AI Bid Assistant</h5>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={() => setExpandedAiCard(prev => prev === project.id ? null : project.id)}
+                              >
+                                {expandedAiCard === project.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                              </Button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div className="bg-white/80 rounded-lg p-3">
+                                <p className="text-xs text-slate-500 mb-1">Harga yang Disarankan</p>
+                                <p className="font-bold text-green-600 text-sm">{aiRecommendation[project.id].suggestedPrice}</p>
+                              </div>
+                              <div className="bg-white/80 rounded-lg p-3">
+                                <p className="text-xs text-slate-500 mb-1">Durasi yang Disarankan</p>
+                                <p className="font-bold text-blue-600 text-sm">{aiRecommendation[project.id].suggestedDuration}</p>
+                              </div>
+                            </div>
+
+                            {/* Key Points */}
+                            <div className="mb-3">
+                              <p className="text-xs font-medium text-slate-600 mb-2 flex items-center gap-1">
+                                <Target className="h-3 w-3" /> Poin Keunggulan Kontraktor Indonesia
+                              </p>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+                                {aiRecommendation[project.id].keyPoints.slice(0, 4).map((point, idx) => (
+                                  <div key={idx} className="flex items-start gap-1.5 text-xs text-slate-600">
+                                    <Zap className="h-3 w-3 text-amber-500 flex-shrink-0 mt-0.5" />
+                                    <span>{point}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Proposal Template */}
+                            <div className="mb-3">
+                              <p className="text-xs font-medium text-slate-600 mb-2 flex items-center gap-1">
+                                <Shield className="h-3 w-3" /> Template Proposal
+                              </p>
+                              <div className="bg-white/80 rounded-lg p-3 max-h-40 overflow-y-auto">
+                                <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+                                  {aiRecommendation[project.id].proposalTemplate}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Tips */}
+                            {aiRecommendation[project.id].keyPoints.length > 4 && (
+                              <div className="mb-3">
+                                <p className="text-xs font-medium text-slate-600 mb-2 flex items-center gap-1">
+                                  <Award className="h-3 w-3" /> Tips Tambahan
+                                </p>
+                                <div className="space-y-1">
+                                  {aiRecommendation[project.id].keyPoints.slice(4).map((point, idx) => (
+                                    <div key={idx} className="flex items-start gap-1.5 text-xs text-slate-500">
+                                      <ChevronRight className="h-3 w-3 flex-shrink-0 mt-0.5 text-primary" />
+                                      <span>{point}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Use This Proposal Button */}
+                            {!project.hasBid && (
+                              <Button
+                                size="sm"
+                                className="bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90 w-full"
+                                onClick={() => {
+                                  const rec = aiRecommendation[project.id];
+                                  // Parse suggested price to extract a middle value
+                                  const priceStr = rec.suggestedPrice.replace(/[^0-9]/g, '');
+                                  const priceValue = priceStr ? parseInt(priceStr) : Math.round(project.budget * 0.9);
+                                  const durationStr = rec.suggestedDuration.match(/\d+/);
+                                  const durationValue = durationStr ? durationStr[0] : '30';
+
+                                  onShowBidModal(project as unknown as Project, {
+                                    proposal: rec.proposalTemplate,
+                                    price: String(priceValue),
+                                    duration: durationValue,
+                                  });
+                                }}
+                              >
+                                <Sparkles className="h-3 w-3 mr-2" />
+                                Gunakan Proposal AI ini
+                              </Button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Collapsed AI indicator */}
+                        {aiRecommendation[project.id] && expandedAiCard !== project.id && (
+                          <div
+                            className="mt-2 border border-primary/20 rounded-lg bg-primary/5 p-2 flex items-center justify-between cursor-pointer hover:bg-primary/10 transition-colors"
+                            onClick={() => setExpandedAiCard(project.id)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Sparkles className="h-3 w-3 text-primary" />
+                              <span className="text-xs text-primary font-medium">Rekomendasi AI tersedia</span>
+                            </div>
+                            <ChevronDown className="h-3 w-3 text-primary" />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Bids Tab */}
           <TabsContent value="bids">

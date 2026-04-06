@@ -189,13 +189,7 @@ export function OwnerDashboard({
   // Memoize chart data transformations
   const projectCategoryData = useMemo(() => {
     if (!chartData?.categoryData || chartData.categoryData.length === 0) {
-      return [
-        { name: 'Pembangunan Baru', value: 35, fill: CHART_COLORS[0] },
-        { name: 'Renovasi', value: 25, fill: CHART_COLORS[1] },
-        { name: 'Komersial', value: 20, fill: CHART_COLORS[2] },
-        { name: 'Interior', value: 15, fill: CHART_COLORS[3] },
-        { name: 'Lainnya', value: 5, fill: CHART_COLORS[4] },
-      ];
+      return [];
     }
     return chartData.categoryData.map((item, idx) => ({
       name: item.name,
@@ -206,14 +200,7 @@ export function OwnerDashboard({
 
   const monthlyProgressData = useMemo(() => {
     if (!chartData?.monthlyProgressData || chartData.monthlyProgressData.length === 0) {
-      return [
-        { month: 'Jan', proyek: 2, selesai: 1, completionRate: 50 },
-        { month: 'Feb', proyek: 2, selesai: 2, completionRate: 100 },
-        { month: 'Mar', proyek: 4, selesai: 3, completionRate: 75 },
-        { month: 'Apr', proyek: 2, selesai: 2, completionRate: 100 },
-        { month: 'Mei', proyek: 5, selesai: 4, completionRate: 80 },
-        { month: 'Jun', proyek: 3, selesai: 3, completionRate: 100 },
-      ];
+      return [];
     }
     return chartData.monthlyProgressData;
   }, [chartData]);
@@ -405,6 +392,9 @@ export function OwnerDashboard({
                   <ChartTooltip content={<ChartTooltipContent />} />
                 </PieChart>
               </ChartContainer>
+              {projectCategoryData.length === 0 && (
+                <p className="text-center text-sm text-slate-400 mt-2">Belum ada data</p>
+              )}
             </CardContent>
           </Card>
 
@@ -424,6 +414,9 @@ export function OwnerDashboard({
                   <Bar dataKey="selesai" fill="var(--color-yellow)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ChartContainer>
+              {monthlyProgressData.length === 0 && (
+                <p className="text-center text-sm text-slate-400 mt-2">Belum ada data</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -496,6 +489,7 @@ export function OwnerDashboard({
               onAcceptBid={onAcceptBid}
               onRejectBid={onRejectBid}
               loadMilestones={loadMilestones}
+              milestones={milestones}
             />
           </TabsContent>
 

@@ -3,6 +3,7 @@
 import { Card, CardContent, Badge, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Progress, ScrollArea } from '@/components/ui';
 import { FolderOpen, MapPin, FileText, Eye, Plus, ChevronRight, Building2, Star, CheckCircle, Video, Flag, Search } from 'lucide-react';
 import { formatRupiah, getStatusColor, getStatusLabel } from '@/lib/helpers';
+import type { Milestone } from '@/types';
 import type { OwnerProjectsTabProps } from './types';
 
 export function OwnerProjectsTab({
@@ -17,7 +18,15 @@ export function OwnerProjectsTab({
   onAcceptBid,
   onRejectBid,
   loadMilestones,
+  milestones,
 }: OwnerProjectsTabProps) {
+
+  // Calculate progress from milestones
+  const getProgress = () => {
+    const completed = milestones.filter((m: Milestone) => m.status === 'COMPLETED').length;
+    const total = milestones.length || 1;
+    return Math.round((completed / total) * 100);
+  };
   const projects = ownerStats?.projects ?? [];
   const filteredProjects = projects
     .filter(project => filterStatus === 'all' || project.status === filterStatus)
@@ -100,9 +109,9 @@ export function OwnerProjectsTab({
                 <div className="mb-4">
                   <div className="flex items-center justify-between text-sm mb-1">
                     <span className="text-slate-600">Progress</span>
-                    <span className="font-medium">65%</span>
+                    <span className="font-medium">{getProgress()}%</span>
                   </div>
-                  <Progress value={65} className="h-2" />
+                  <Progress value={getProgress()} className="h-2" />
                   <div className="flex gap-2 mt-2">
                     <Button
                       variant="outline"

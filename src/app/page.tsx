@@ -17,10 +17,12 @@ import { RegisterModal } from '@/components/modals/RegisterModal';
 import { CreateProjectModal } from '@/components/modals/CreateProjectModal';
 import { VerificationModal } from '@/components/modals/VerificationModal';
 import { CCTVModal } from '@/components/modals/CCTVModal';
+import { BidModal } from '@/components/modals/BidModal';
 import { ProgressModal } from '@/components/modals/ProgressModal';
 import { CompareBidsModal } from '@/components/modals/CompareBidsModal';
 import { ExportModal } from '@/components/modals/ExportModal';
 import { ContractorDetailModal } from '@/components/modals/ContractorDetailModal';
+import { CostEstimatorModal } from '@/components/modals/CostEstimatorModal';
 
 // Types for selected items
 interface SelectedContractor {
@@ -73,6 +75,7 @@ export default function TenderProApp() {
   const [progressModalOpen, setProgressModalOpen] = useState(false);
   const [compareModalOpen, setCompareModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [costEstimatorOpen, setCostEstimatorOpen] = useState(false);
 
   // Form states
   const [loginRole, setLoginRole] = useState<UserRole>('OWNER');
@@ -89,6 +92,16 @@ export default function TenderProApp() {
   const [selectedBidsForCompare, setSelectedBidsForCompare] = useState<string[]>([]);
   const [exportFormat, setExportFormat] = useState<'pdf' | 'excel'>('pdf');
 
+  // Bid modal states
+  const [bidModalOpen, setBidModalOpen] = useState(false);
+  const [selectedProjectForBid, setSelectedProjectForBid] = useState<Project | null>(null);
+  const [bidProposal, setBidProposal] = useState('');
+  const [bidPrice, setBidPrice] = useState('');
+  const [bidDuration, setBidDuration] = useState('');
+
+  // Pre-filled bid data from AI assistant
+  const [prefilledBidData, setPrefilledBidData] = useState<{ proposal: string; price: string; duration: string } | null>(null);
+
   // Selected items for modals
   const [selectedContractor, setSelectedContractor] = useState<SelectedContractor | null>(null);
   const [selectedProjectForCCTV, setSelectedProjectForCCTV] = useState<SelectedProjectForCCTV | null>(null);
@@ -98,21 +111,25 @@ export default function TenderProApp() {
   const [contractors, setContractors] = useState<SelectedContractor[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [documents, setDocuments] = useState<Array<{id: string; type: string; name: string; verified: boolean}>>([]);
+  const [localContractors, setLocalContractors] = useState<Array<SelectedContractor & { isLocal?: boolean; certifications?: Array<{ type: string; isVerified: boolean }>; badges?: Array<{ type: string; label: string; icon: string }> }>>([]);
 
   // Load initial data for landing page
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [contractorsRes, projectsRes] = await Promise.all([
+        const [contractorsRes, projectsRes, localRes] = await Promise.all([
           fetch('/api/contractors'),
           fetch('/api/projects?status=OPEN&limit=6'),
+          fetch('/api/contractors/local?limit=3'),
         ]);
         const contractorsData = await contractorsRes.json();
         const projectsData = await projectsRes.json();
+        const localData = await localRes.json();
         if (!cancelled) {
           setContractors(contractorsData.contractors || []);
           setProjects(projectsData.projects || []);
+          setLocalContractors(localData.contractors || []);
         }
       } catch (error) {
         console.error('Failed to fetch data:', error);
@@ -354,9 +371,20 @@ export default function TenderProApp() {
           contractorChartData={dashboard.contractorChartData}
           onLogout={handleLogout}
           onShowVerification={() => setVerificationOpen(true)}
-          onShowBidModal={(project) => {
-            // For contractor to bid on projects - can be implemented later
-            toast.info('Fitur bid proyek akan segera tersedia');
+          onShowBidModal={(project, prefillData) => {
+            setSelectedProjectForBid(project);
+            if (prefillData) {
+              setBidProposal(prefillData.proposal);
+              setBidPrice(prefillData.price);
+              setBidDuration(prefillData.duration);
+              setPrefilledBidData(prefillData);
+            } else {
+              setBidProposal('');
+              setBidPrice('');
+              setBidDuration('');
+              setPrefilledBidData(null);
+            }
+            setBidModalOpen(true);
           }}
           // Auto-refresh props
           refreshInterval={dashboard.refreshInterval}
@@ -379,6 +407,32 @@ export default function TenderProApp() {
             setVerificationOpen(false);
           }}
         />
+        <BidModal
+          open={bidModalOpen}
+          onOpenChange={setBidModalOpen}
+          project={selectedProjectForBid}
+          proposal={bidProposal}
+          setProposal={setBidProposal}
+          price={bidPrice}
+          setPrice={setBidPrice}
+          duration={bidDuration}
+          setDuration={setBidDuration}
+          onSubmit={async () => {
+            if (!selectedProjectForBid || !bidProposal.trim() || !bidPrice || !bidDuration) {
+              toast.error('Mohon lengkapi semua field penawaran');
+              return;
+            }
+            const success = await dashboard.handleBid(selectedProjectForBid, bidProposal, bidPrice, bidDuration);
+            if (success) {
+              setBidModalOpen(false);
+              setSelectedProjectForBid(null);
+              setBidProposal('');
+              setBidPrice('');
+              setBidDuration('');
+              setPrefilledBidData(null);
+            }
+          }}
+        />
       </>
     );
   }
@@ -396,6 +450,8 @@ export default function TenderProApp() {
         onRegister={(role) => { setLoginRole(role); setRegisterOpen(true); }}
         onLogout={handleLogout}
         onDashboard={() => setActiveTab('dashboard')}
+        onShowCostEstimator={() => setCostEstimatorOpen(true)}
+        localContractors={localContractors}
       />
       <LoginModal
         open={loginOpen}
@@ -420,6 +476,10 @@ export default function TenderProApp() {
         open={!!selectedContractor}
         onOpenChange={() => setSelectedContractor(null)}
         contractor={selectedContractor}
+      />
+      <CostEstimatorModal
+        open={costEstimatorOpen}
+        onOpenChange={setCostEstimatorOpen}
       />
     </>
   );

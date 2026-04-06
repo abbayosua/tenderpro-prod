@@ -3,15 +3,24 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Badge, Progress } from '@/components/ui';
 import { Flag, Eye, Calendar } from 'lucide-react';
 import { formatRupiah } from '@/lib/helpers';
+import type { Milestone } from '@/types';
 import type { OwnerTimelineTabProps } from './types';
 
 export function OwnerTimelineTab({
   ownerStats,
   onShowProgress,
   loadMilestones,
+  milestones = [],
 }: OwnerTimelineTabProps) {
   const projects = ownerStats?.projects ?? [];
   const activeOrCompletedProjects = projects.filter(p => p.status === 'IN_PROGRESS' || p.status === 'COMPLETED');
+
+  // Calculate progress from milestones
+  const getProgress = () => {
+    const completed = milestones.filter((m: Milestone) => m.status === 'COMPLETED').length;
+    const total = milestones.length || 1;
+    return Math.round((completed / total) * 100);
+  };
 
   return (
     <Card>
@@ -58,9 +67,9 @@ export function OwnerTimelineTab({
                     <div className="flex-1">
                       <div className="flex items-center justify-between text-sm mb-1">
                         <span className="text-slate-600">Progress</span>
-                        <span className="font-medium text-primary">65%</span>
+                        <span className="font-medium text-primary">{getProgress()}%</span>
                       </div>
-                      <Progress value={65} className="h-2" />
+                      <Progress value={getProgress()} className="h-2" />
                     </div>
                     <div className="text-sm text-slate-500">
                       <Calendar className="h-4 w-4 inline mr-1" />

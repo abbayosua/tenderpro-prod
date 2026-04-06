@@ -62,6 +62,23 @@ model User {
   conversationsAsUser1 Conversation[] @relation("ConversationUser1")
   conversationsAsUser2 Conversation[] @relation("ConversationUser2")
   sentMessages      Message[]
+  
+  // Review relations
+  givenReviews      Review[] @relation("ReviewFromUser")
+  receivedReviews   Review[] @relation("ReviewToContractor")
+  
+  // Certification & Badge relations
+  certifications    Certification[]
+
+  // Project Member relations
+  projectMembers    ProjectMember[]
+
+  // Dispute relations
+  reportedDisputes  Dispute[] @relation("DisputeReporter")
+  disputesAgainst   Dispute[] @relation("DisputeAgainst")
+
+  // Project Template relations
+  projectTemplates  ProjectTemplate[]
 
   @@map("users")
 }
@@ -92,6 +109,10 @@ model ContractorProfile {
   
   portfolios        Portfolio[]
   bids              Bid[]
+  
+  // Certification & Badge relations
+  certifications    Certification[]
+  badges            Badge[]
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -143,8 +164,14 @@ model Project {
   bids              Bid[]
   milestones        ProjectMilestone[]
   documents         ProjectDocument[]
+  reviews           Review[]
+  members           ProjectMember[]
+  disputes          Dispute[]
   
   viewCount         Int      @default(0)
+  
+  // Escrow relation
+  escrow            EscrowTransaction?
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -371,4 +398,149 @@ model Message {
   createdAt         DateTime @default(now())
 
   @@map("messages")
+}
+
+// Reviews - rating & review system for contractors
+model Review {
+  id                String   @id @default(cuid())
+  
+  fromUserId        String   // Owner yang memberi review
+  fromUser          User     @relation("ReviewFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+  
+  toContractorId    String   // Kontraktor yang di-review
+  toContractor      User     @relation("ReviewToContractor", fields: [toContractorId], references: [id], onDelete: Cascade)
+  
+  projectId         String   // Proyek terkait
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  rating            Int      // 1-5 stars
+  review            String?  @db.Text // Review text
+  
+  // Category ratings (1-5)
+  professionalism   Int      @default(5)
+  quality           Int      @default(5)
+  timeliness        Int      @default(5)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([fromUserId, projectId])
+
+  @@map("reviews")
+}
+
+// Certifications - sertifikasi kontraktor Indonesia
+model Certification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contractorProfile ContractorProfile @relation(fields: [userId], references: [userId], onDelete: Cascade, map: "cert_contractor_fk")
+  type        String   // SIUJK, SBU, SKA, SKT, ISO, etc
+  number      String
+  issuedBy    String   // Lembaga penerbit
+  issuedAt    DateTime
+  expiresAt   DateTime?
+  fileUrl     String
+  isVerified  Boolean  @default(false)
+  verifiedAt  DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("certifications")
+}
+
+// Badges - lencana pencapaian kontraktor
+model Badge {
+  id            String   @id @default(cuid())
+  contractorId  String
+  contractor    ContractorProfile @relation(fields: [contractorId], references: [userId], onDelete: Cascade)
+  type          String   // VERIFIED, TOP_RATED, FAST_DELIVERY, CERTIFIED, LOCAL_CHAMPION, etc
+  label         String
+  description   String?
+  icon          String?
+  earnedAt      DateTime @default(now())
+  
+  createdAt     DateTime @default(now())
+
+  @@map("badges")
+}
+
+// Project Members - anggota tim proyek
+model ProjectMember {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String   @default("MEMBER") // PROJECT_MANAGER, SITE_ENGINEER, SUPERVISOR, MEMBER
+  joinedAt    DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+// Disputes - sengketa proyek
+model Dispute {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id])
+  reportedBy    String
+  reporter      User     @relation("DisputeReporter", fields: [reportedBy], references: [id])
+  againstUser   String?
+  against       User?    @relation("DisputeAgainst", fields: [againstUser], references: [id])
+
+  type          String   // PAYMENT, QUALITY, DELAY, SCOPE, OTHER
+  description   String   @db.Text
+  status        String   @default("OPEN") // OPEN, UNDER_REVIEW, RESOLVED, ESCALATED
+  priority      String   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+
+  resolution    String?  @db.Text
+  resolvedBy    String?
+  resolvedAt    DateTime?
+
+  attachments   String?  @db.Text // JSON array of file URLs
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("disputes")
+}
+
+// Project Templates - template proyek yang sering digunakan
+model ProjectTemplate {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  description   String   @db.Text
+  category      String
+  requirements  String?  @db.Text
+  budgetRange   String?  // e.g. "50000000-150000000"
+  durationRange String?  // e.g. "30-90"
+  isPublic      Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("project_templates")
+}
+
+// Escrow Transactions - sistem escrow untuk proyek
+model EscrowTransaction {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  project     Project  @relation(fields: [projectId], references: [id])
+  amount      Float
+  status      String   @default("PENDING") // PENDING, FUNDED, IN_PROGRESS, RELEASED, DISPUTED
+  fundedAt    DateTime?
+  releasedAt  DateTime?
+  bankName    String?
+  bankAccount String?
+  bankHolder  String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("escrow_transactions")
 }

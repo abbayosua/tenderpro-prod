@@ -125,26 +125,23 @@ export function WebcamUploadModal({
 
     setIsUploading(true);
     try {
-      // Upload to freeimage.host
-      const formData = new FormData();
-      formData.append('key', '6d207e02198a847aa98d0a2a901485a5');
-      formData.append('source', capturedImage.split(',')[1]); // Remove data:image/jpeg;base64, prefix
-      formData.append('format', 'json');
-
-      const response = await fetch('https://freeimage.host/api/1/upload', {
+      // Upload via server-side proxy to avoid exposing API key
+      const base64Data = capturedImage.split(',')[1]; // Remove data:image/jpeg;base64, prefix
+      const response = await fetch('/api/upload-image', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Data }),
       });
 
       const data = await response.json();
 
-      if (data.status_code === 200 && data.image?.url) {
+      if (data.success && data.url) {
         // Call onUpload with the image URL
         const success = await onUpload({
           name: documentName,
           type: documentType,
-          fileUrl: data.image.url,
-          fileSize: data.image.size || 0,
+          fileUrl: data.url,
+          fileSize: data.size || 0,
         });
 
         if (success) {
@@ -152,7 +149,7 @@ export function WebcamUploadModal({
           handleClose();
         }
       } else {
-        throw new Error(data.error?.message || 'Gagal mengunggah gambar');
+        throw new Error(data.error || 'Gagal mengunggah gambar');
       }
     } catch (error) {
       console.error('Upload error:', error);

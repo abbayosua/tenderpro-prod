@@ -90,7 +90,9 @@ export interface OwnerFavoritesTabProps {
   onRemoveFavorite: (favoriteId: string) => void;
 }
 
-export type OwnerTimelineTabProps = OwnerTabsSharedProps;
+export type OwnerTimelineTabProps = OwnerTabsSharedProps & {
+  milestones?: Milestone[];
+};
 
 export interface OwnerDocumentsTabProps {
   ownerStats: OwnerStats;

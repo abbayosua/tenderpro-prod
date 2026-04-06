@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let dashboardData = {};
+    let dashboardData: Record<string, unknown> = {};
 
     if (user.role === 'CONTRACTOR') {
       // Contractor dashboard stats
@@ -104,6 +104,61 @@ export async function GET(request: NextRequest) {
         take: 10,
       });
 
+      // ===== NEW: Enhanced contractor stats =====
+      
+      // Response rate: accepted + rejected vs total
+      const responseRate = totalBids > 0
+        ? ((acceptedBids + rejectedBids) / totalBids * 100).toFixed(1)
+        : '100';
+
+      // Average response time (simulated - time between project creation and first bid by this contractor)
+      const contractorBidsWithDates = await db.bid.findMany({
+        where: { contractorId: userId, status: { in: ['ACCEPTED', 'REJECTED'] } },
+        include: {
+          project: { select: { createdAt: true } },
+        },
+        select: {
+          createdAt: true,
+          project: { select: { createdAt: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20,
+      });
+      
+      let totalResponseHours = 0;
+      let responseCount = 0;
+      contractorBidsWithDates.forEach((bid) => {
+        const diffMs = bid.createdAt.getTime() - bid.project.createdAt.getTime();
+        const diffHours = diffMs / (1000 * 60 * 60);
+        if (diffHours > 0 && diffHours < 720) { // Only count if within 30 days
+          totalResponseHours += diffHours;
+          responseCount++;
+        }
+      });
+      const averageResponseTime = responseCount > 0
+        ? `${Math.round(totalResponseHours / responseCount)} jam`
+        : 'Belum ada data';
+
+      // Earnings: total from accepted bids
+      const earningsResult = await db.bid.aggregate({
+        where: { contractorId: userId, status: 'ACCEPTED' },
+        _sum: { price: true },
+      });
+      const earnings = earningsResult._sum.price || 0;
+
+      // Active project count: projects with accepted bids that are IN_PROGRESS
+      const activeProjectCount = await db.project.count({
+        where: {
+          status: 'IN_PROGRESS',
+          bids: {
+            some: {
+              contractorId: userId,
+              status: 'ACCEPTED',
+            },
+          },
+        },
+      });
+
       dashboardData = {
         totalBids,
         acceptedBids,
@@ -140,6 +195,11 @@ export async function GET(request: NextRequest) {
             name: p.owner.name,
           },
         })),
+        // NEW fields
+        responseRate: parseFloat(responseRate as string),
+        averageResponseTime,
+        earnings,
+        activeProjectCount,
       };
     } else if (user.role === 'OWNER') {
       // Owner dashboard stats
@@ -179,85 +239,45 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      // Calculate trends (compare current month vs previous month)
+      // Calculate trends
       const now = new Date();
       const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-      // Current month projects count
       const currentMonthProjects = await db.project.count({
-        where: {
-          ownerId: userId,
-          createdAt: { gte: startOfCurrentMonth },
-        },
+        where: { ownerId: userId, createdAt: { gte: startOfCurrentMonth } },
       });
 
-      // Previous month projects count
       const previousMonthProjects = await db.project.count({
-        where: {
-          ownerId: userId,
-          createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth },
-        },
+        where: { ownerId: userId, createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } },
       });
 
-      // Current month active projects (projects that became active this month)
       const currentMonthActive = await db.project.count({
-        where: {
-          ownerId: userId,
-          status: 'IN_PROGRESS',
-          updatedAt: { gte: startOfCurrentMonth },
-        },
+        where: { ownerId: userId, status: 'IN_PROGRESS', updatedAt: { gte: startOfCurrentMonth } },
       });
 
-      // Previous month active projects
       const previousMonthActive = await db.project.count({
-        where: {
-          ownerId: userId,
-          status: 'IN_PROGRESS',
-          updatedAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth },
-        },
+        where: { ownerId: userId, status: 'IN_PROGRESS', updatedAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } },
       });
 
-      // Current month open projects
       const currentMonthOpen = await db.project.count({
-        where: {
-          ownerId: userId,
-          status: 'OPEN',
-          createdAt: { gte: startOfCurrentMonth },
-        },
+        where: { ownerId: userId, status: 'OPEN', createdAt: { gte: startOfCurrentMonth } },
       });
 
-      // Previous month open projects
       const previousMonthOpen = await db.project.count({
-        where: {
-          ownerId: userId,
-          status: 'OPEN',
-          createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth },
-        },
+        where: { ownerId: userId, status: 'OPEN', createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } },
       });
 
-      // Current month pending bids
       const currentMonthPendingBids = await db.bid.count({
-        where: {
-          project: { ownerId: userId },
-          status: 'PENDING',
-          createdAt: { gte: startOfCurrentMonth },
-        },
+        where: { project: { ownerId: userId }, status: 'PENDING', createdAt: { gte: startOfCurrentMonth } },
       });
 
-      // Previous month pending bids
       const previousMonthPendingBids = await db.bid.count({
-        where: {
-          project: { ownerId: userId },
-          status: 'PENDING',
-          createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth },
-        },
+        where: { project: { ownerId: userId }, status: 'PENDING', createdAt: { gte: startOfPreviousMonth, lt: startOfCurrentMonth } },
       });
 
-      // Calculate percentage changes
       const calculateTrend = (current: number, previous: number): { value: string; isUp: boolean } => {
         if (previous === 0) {
-          // If previous was 0, show current as growth or 0
           return { value: current > 0 ? `+${current}` : '0%', isUp: current > 0 };
         }
         const change = ((current - previous) / previous) * 100;
@@ -273,13 +293,67 @@ export async function GET(request: NextRequest) {
       const openProjectsTrend = calculateTrend(currentMonthOpen, previousMonthOpen);
       const pendingBidsTrend = calculateTrend(currentMonthPendingBids, previousMonthPendingBids);
 
+      // ===== NEW: Enhanced owner stats =====
+
+      // Budget utilization
+      const totalBudgetResult = await db.project.aggregate({
+        where: { ownerId: userId },
+        _sum: { budget: true },
+      });
+      const totalBudget = totalBudgetResult._sum.budget || 0;
+
+      const activeBudgetResult = await db.project.aggregate({
+        where: { ownerId: userId, status: 'IN_PROGRESS' },
+        _sum: { budget: true },
+      });
+      const activeBudget = activeBudgetResult._sum.budget || 0;
+
+      const budgetUtilization = totalBudget > 0
+        ? Math.round((activeBudget / totalBudget) * 100)
+        : 0;
+
+      // Average project duration
+      const completedProjectsWithDates = await db.project.findMany({
+        where: { ownerId: userId, status: 'COMPLETED', startDate: { not: null }, endDate: { not: null } },
+        select: { startDate: true, endDate: true },
+      });
+      
+      let totalDurationDays = 0;
+      completedProjectsWithDates.forEach((p) => {
+        if (p.startDate && p.endDate) {
+          const diffDays = Math.ceil((p.endDate.getTime() - p.startDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (diffDays > 0) totalDurationDays += diffDays;
+        }
+      });
+      const averageProjectDuration = completedProjectsWithDates.length > 0
+        ? Math.round(totalDurationDays / completedProjectsWithDates.length)
+        : 0;
+
+      // Recent activity (last 5 actions)
+      let recentActivity: Array<{ action: string; description: string; createdAt: Date; projectName?: string }> = [];
+      if (db.activityLog) {
+        const recentActivityLogs = await db.activityLog.findMany({
+          where: { userId },
+          include: {
+            project: { select: { title: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        });
+        recentActivity = recentActivityLogs.map((log) => ({
+          action: log.action,
+          description: log.description,
+          createdAt: log.createdAt,
+          projectName: log.project?.title || undefined,
+        }));
+      }
+
       dashboardData = {
         totalProjects,
         activeProjects,
         openProjects,
         completedProjects,
         totalPendingBids,
-        // Trends
         trends: {
           totalProjects: totalProjectsTrend,
           activeProjects: activeProjectsTrend,
@@ -311,6 +385,10 @@ export async function GET(request: NextRequest) {
             },
           })),
         })),
+        // NEW fields
+        budgetUtilization,
+        averageProjectDuration,
+        recentActivity,
       };
     }
 

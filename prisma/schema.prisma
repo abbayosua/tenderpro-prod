@@ -77,8 +77,15 @@ model User {
   reportedDisputes  Dispute[] @relation("DisputeReporter")
   disputesAgainst   Dispute[] @relation("DisputeAgainst")
 
+  // Favorite relations
+  favoriteUsers     Favorite[] @relation("FavoriteUser")
+  favoriteContractors Favorite[] @relation("FavoriteContractor")
+
   // Project Template relations
   projectTemplates  ProjectTemplate[]
+
+  // Activity Log relations
+  activityLogs      ActivityLog[]
 
   @@map("users")
 }
@@ -167,6 +174,9 @@ model Project {
   reviews           Review[]
   members           ProjectMember[]
   disputes          Dispute[]
+
+  // Activity Log relations
+  activityLogs      ActivityLog[]
   
   viewCount         Int      @default(0)
   
@@ -263,12 +273,15 @@ model VerificationRequest {
 model Favorite {
   id                String   @id @default(cuid())
   userId            String   // Owner yang menyimpan
+  user              User     @relation("FavoriteUser", fields: [userId], references: [id], onDelete: Cascade)
   contractorId      String   // Kontraktor yang disimpan
+  contractor        User     @relation("FavoriteContractor", fields: [contractorId], references: [id], onDelete: Cascade)
   
   notes             String?  @db.Text // Catatan pribadi
   createdAt         DateTime @default(now())
 
   @@unique([userId, contractorId])
+  @@index([userId])
   @@map("favorites")
 }
 
@@ -285,6 +298,7 @@ model Notification {
   
   createdAt         DateTime @default(now())
 
+  @@index([userId])
   @@map("notifications")
 }
 
@@ -543,4 +557,23 @@ model EscrowTransaction {
   updatedAt   DateTime @updatedAt
 
   @@map("escrow_transactions")
+}
+
+// Activity Logs - log aktivitas proyek
+model ActivityLog {
+  id          String   @id @default(cuid())
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  action      String   // BID_SUBMITTED, BID_ACCEPTED, MILESTONE_COMPLETED, PAYMENT_MADE, DOCUMENT_UPLOADED, etc
+  description String   @db.Text
+  metadata    String?  @db.Text // JSON for extra data
+
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([userId])
+  @@map("activity_logs")
 }

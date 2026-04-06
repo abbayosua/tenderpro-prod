@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter, Button, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChartContainer } from '@/components/ui/chart';
 import {
   ChartTooltip, ChartTooltipContent, type ChartConfig
@@ -12,13 +11,13 @@ import {
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import {
   Building2, Star, MapPin, Clock, Briefcase, CheckCircle, TrendingUp,
-  FileText, Eye, Upload, Plus, Search, MessageSquare, FolderOpen, LogOut,
-  User, X, Edit, Trash2, DollarSign, TrendingDown, Minus, RefreshCw,
+  FileText, Upload, Plus, Search, MessageSquare, FolderOpen, LogOut,
+  X, Edit, Trash2, DollarSign, TrendingDown, Minus, RefreshCw,
   Sparkles, Zap, Shield, Target, Award, ChevronDown, ChevronUp, ChevronRight, Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ContractorStats, Project } from '@/types';
-import { formatRupiah, getStatusColor, getStatusLabel } from '@/lib/helpers';
+import { formatRupiah } from '@/lib/helpers';
 import { SimpleStatsCard } from '@/components/shared/StatsCard';
 import { VerificationAlert } from '@/components/shared/VerificationAlert';
 import { PortfolioModal } from '@/components/modals/PortfolioModal';

@@ -186,7 +186,7 @@ export function WebcamUploadModal({
     if (open && isStreaming) {
       startCamera();
     }
-  }, [facingMode]);
+  }, [facingMode, open, isStreaming, startCamera]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>

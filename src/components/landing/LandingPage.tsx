@@ -4,13 +4,18 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+  Sheet, SheetContent, SheetTrigger, SheetClose
+} from '@/components/ui/sheet';
+import {
   Building2, Star, MapPin, Briefcase, CheckCircle,
   User, UserPlus, Eye, Calculator, Sparkles, Globe,
-  FileCheck, Shield, Award, Lightbulb, TrendingUp, Info
+  FileCheck, Shield, Award, Lightbulb, TrendingUp,
+  Menu, LogIn, ChevronRight
 } from 'lucide-react';
 import { Contractor, Project } from '@/types';
 import { formatRupiah } from '@/lib/helpers';
 import { BackgroundPaths } from '@/components/background-paths';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import {
   HeroSection,
   TrustSection,
@@ -69,30 +74,146 @@ export function LandingPage({
             <span className="text-2xl font-bold text-slate-800">TenderPro</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
-            <a href="#contractors" className="text-slate-600 hover:text-primary transition-colors">Kontraktor</a>
-            <a href="#local-contractors" className="text-slate-600 hover:text-green-600 transition-colors flex items-center gap-1">
+            <a href="#contractors" className="text-slate-600 hover:text-primary transition-colors text-sm font-medium">Kontraktor</a>
+            <a href="#local-contractors" className="text-slate-600 hover:text-green-600 transition-colors flex items-center gap-1 text-sm font-medium">
               <Globe className="h-4 w-4" /> Lokal
             </a>
-            <a href="#projects" className="text-slate-600 hover:text-primary transition-colors">Proyek</a>
-            <a href="#cost-estimator" className="text-slate-600 hover:text-primary transition-colors flex items-center gap-1">
+            <a href="#projects" className="text-slate-600 hover:text-primary transition-colors text-sm font-medium">Proyek</a>
+            <a href="#cost-estimator" className="text-slate-600 hover:text-primary transition-colors flex items-center gap-1 text-sm font-medium">
               <Calculator className="h-4 w-4" /> Estimasi
             </a>
-            <a href="#how-it-works" className="text-slate-600 hover:text-primary transition-colors">Cara Kerja</a>
+            <a href="#how-it-works" className="text-slate-600 hover:text-primary transition-colors text-sm font-medium">Cara Kerja</a>
           </nav>
           <div className="flex items-center gap-3">
-            {user ? (
-              <>
-                <Button variant="ghost" onClick={onDashboard}>Dashboard</Button>
-                <Button variant="outline" onClick={onLogout}><User className="h-4 w-4 mr-2" /> Keluar</Button>
-              </>
-            ) : (
-              <>
-                <Button variant="outline" onClick={onLogin}>Masuk</Button>
-                <Button onClick={() => onRegister('OWNER')} className="bg-primary hover:bg-primary/90">
-                  <UserPlus className="h-4 w-4 mr-2" /> Daftar
-                </Button>
-              </>
-            )}
+            <ThemeToggle />
+            {/* Desktop actions */}
+            <div className="hidden md:flex items-center gap-3">
+              {user ? (
+                <>
+                  <Button variant="ghost" onClick={onDashboard} className="text-sm font-medium">Dashboard</Button>
+                  <Button variant="outline" onClick={onLogout} className="text-sm"><User className="h-4 w-4 mr-2" /> Keluar</Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="outline" onClick={onLogin} className="text-sm h-10">Masuk</Button>
+                  <Button onClick={() => onRegister('OWNER')} className="bg-primary hover:bg-primary/90 text-sm h-10 shadow-sm shadow-primary/20">
+                    <UserPlus className="h-4 w-4 mr-2" /> Daftar
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {/* Mobile hamburger */}
+            <div className="md:hidden">
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-10 w-10">
+                    <Menu className="h-5 w-5 text-slate-700" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-80 p-0">
+                  {/* Mobile menu header */}
+                  <div className="bg-gradient-to-br from-primary via-primary/90 to-teal-700 px-6 py-6">
+                    <div className="flex items-center gap-2 mb-1">
+                      <img src="/logo.png" alt="TenderPro" className="h-7 w-auto" />
+                      <span className="text-xl font-bold text-white">TenderPro</span>
+                    </div>
+                    <p className="text-white/60 text-xs">Platform Tender Konstruksi Terpercaya</p>
+                  </div>
+
+                  {/* Navigation links */}
+                  <div className="px-4 py-4">
+                    <nav className="space-y-1">
+                      <SheetClose asChild>
+                        <a href="#contractors" className="flex items-center justify-between px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 hover:text-primary transition-all duration-200 font-medium">
+                          <div className="flex items-center gap-3">
+                            <Building2 className="h-4 w-4 text-slate-400" />
+                            <span>Kontraktor</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                        </a>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <a href="#local-contractors" className="flex items-center justify-between px-4 py-3 rounded-xl text-slate-700 hover:bg-green-50 hover:text-green-600 transition-all duration-200 font-medium">
+                          <div className="flex items-center gap-3">
+                            <Globe className="h-4 w-4 text-slate-400" />
+                            <span>Kontraktor Lokal</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                        </a>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <a href="#projects" className="flex items-center justify-between px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 hover:text-primary transition-all duration-200 font-medium">
+                          <div className="flex items-center gap-3">
+                            <Briefcase className="h-4 w-4 text-slate-400" />
+                            <span>Proyek</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                        </a>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <a href="#cost-estimator" className="flex items-center justify-between px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 hover:text-primary transition-all duration-200 font-medium">
+                          <div className="flex items-center gap-3">
+                            <Calculator className="h-4 w-4 text-slate-400" />
+                            <span>Estimasi Biaya</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                        </a>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <a href="#how-it-works" className="flex items-center justify-between px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 hover:text-primary transition-all duration-200 font-medium">
+                          <div className="flex items-center gap-3">
+                            <Lightbulb className="h-4 w-4 text-slate-400" />
+                            <span>Cara Kerja</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                        </a>
+                      </SheetClose>
+                    </nav>
+
+                    {/* Divider */}
+                    <div className="h-px bg-slate-100 my-4" />
+
+                    {/* Dark mode toggle in mobile */}
+                    <div className="flex items-center justify-between px-4 py-2 mb-2">
+                      <span className="text-sm font-medium text-slate-700">Mode Gelap</span>
+                      <ThemeToggle />
+                    </div>
+
+                    {/* Auth buttons */}
+                    <div className="space-y-2 px-1">
+                      {user ? (
+                        <>
+                          <SheetClose asChild>
+                            <Button variant="outline" onClick={onDashboard} className="w-full h-11 font-medium">
+                              Dashboard
+                            </Button>
+                          </SheetClose>
+                          <SheetClose asChild>
+                            <Button variant="outline" onClick={onLogout} className="w-full h-11 font-medium border-slate-200">
+                              <User className="h-4 w-4 mr-2" /> Keluar
+                            </Button>
+                          </SheetClose>
+                        </>
+                      ) : (
+                        <>
+                          <SheetClose asChild>
+                            <Button variant="outline" onClick={onLogin} className="w-full h-11 font-medium border-slate-200">
+                              <LogIn className="h-4 w-4 mr-2" /> Masuk
+                            </Button>
+                          </SheetClose>
+                          <SheetClose asChild>
+                            <Button onClick={() => onRegister('OWNER')} className="w-full h-11 font-medium bg-gradient-to-r from-primary to-teal-600 hover:from-primary/90 hover:to-teal-600/90 text-white shadow-md shadow-primary/20">
+                              <UserPlus className="h-4 w-4 mr-2" /> Daftar Sekarang
+                            </Button>
+                          </SheetClose>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
           </div>
         </div>
       </header>

@@ -6,7 +6,7 @@ import { ChartContainer } from '@/components/ui/chart';
 import {
   ChartTooltip, ChartTooltipContent, type ChartConfig
 } from '@/components/ui/chart';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend, ComposedChart } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 import {
   Building2, Star, MapPin, Clock, Briefcase, CheckCircle, ChevronRight,
   FileText, Eye, Upload, Plus, DollarSign, BarChart3,
@@ -16,7 +16,7 @@ import {
 import { ChatModal } from '@/components/modals/ChatModal';
 import { toast } from 'sonner';
 import { OwnerStats, Milestone, Favorite, Notification, Project } from '@/types';
-import { formatRupiah, getStatusColor, getStatusLabel } from '@/lib/helpers';
+import { formatRupiah } from '@/lib/helpers';
 import { StatsCard } from '@/components/shared/StatsCard';
 import { VerificationAlert } from '@/components/shared/VerificationAlert';
 import { NotificationPanel } from '@/components/shared/NotificationPanel';
@@ -158,12 +158,17 @@ export function OwnerDashboard({
   
   // Handle document upload from webcam
   const handleDocumentUpload = async (data: { name: string; type: string; fileUrl: string; fileSize: number }) => {
+    const projectId = filterDocProject !== 'all' ? filterDocProject : projects[0]?.id;
+    if (!projectId) {
+      toast.error('Tidak ada proyek tersedia. Buat proyek terlebih dahulu.');
+      return false;
+    }
     try {
       const res = await fetch('/api/owner-documents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          projectId: filterDocProject !== 'all' ? filterDocProject : projects[0]?.id,
+          projectId,
           uploadedBy: user.id,
           name: data.name,
           type: data.type,
@@ -411,7 +416,7 @@ export function OwnerDashboard({
                   <YAxis tickLine={false} axisLine={false} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="proyek" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="selesai" fill="var(--color-yellow)" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="selesai" fill="hsl(48, 96%, 53%)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ChartContainer>
               {monthlyProgressData.length === 0 && (

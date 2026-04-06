@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useReducer, useCallback } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -113,42 +113,52 @@ interface EnhancedProfile {
 }
 
 export function ContractorDetailModal({ open, onOpenChange, contractor }: ContractorDetailModalProps) {
-  const [profile, setProfile] = useState<EnhancedProfile | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [lastKey, setLastKey] = useState<string | null>(null);
+  const [profileState, dispatch] = useReducer(
+    (state: { profile: EnhancedProfile | null; loading: boolean }, action: { type: string; profile?: EnhancedProfile | null }) => {
+      switch (action.type) {
+        case 'LOAD_START': return { profile: null, loading: true };
+        case 'LOAD_SUCCESS': return { profile: action.profile ?? null, loading: false };
+        case 'LOAD_ERROR': return { profile: null, loading: false };
+        case 'RESET': return { profile: null, loading: false };
+        default: return state;
+      }
+    },
+    { profile: null, loading: false }
+  );
+  const profile = profileState.profile;
+  const loading = profileState.loading;
 
   const contractorId = contractor?.id;
   const profileKey = open && contractorId ? contractorId : null;
 
-  // Trigger data load on key change
-  if (profileKey !== lastKey) {
+  // Load enhanced profile data when key changes (via useEffect)
+  const loadProfile = useCallback((key: string) => {
+    dispatch({ type: 'LOAD_START' });
+
+    fetch(`/api/contractors/${key}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          dispatch({ type: 'LOAD_SUCCESS', profile: data.contractor });
+        } else {
+          dispatch({ type: 'LOAD_ERROR' });
+        }
+      })
+      .catch(err => {
+        console.error('Failed to load enhanced profile:', err);
+        dispatch({ type: 'LOAD_ERROR' });
+      });
+  }, []);
+
+  useEffect(() => {
     if (profileKey) {
-      setLoading(true);
-      setProfile(null);
-      setLastKey(profileKey);
-      fetch(`/api/contractors/${profileKey}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            setProfile(data.contractor);
-          }
-        })
-        .catch(err => {
-          console.error('Failed to load enhanced profile:', err);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
+      loadProfile(profileKey);
     } else {
-      setProfile(null);
-      setLoading(false);
-      setLastKey(null);
+      dispatch({ type: 'RESET' });
     }
-  }
+  }, [profileKey, loadProfile]);
 
   if (!contractor) return null;
-
-  const profileData = profile;
 
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }).map((_, i) => (

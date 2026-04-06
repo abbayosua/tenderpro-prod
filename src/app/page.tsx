@@ -90,7 +90,6 @@ export default function TenderProApp() {
 
   // Compare bids state
   const [selectedBidsForCompare, setSelectedBidsForCompare] = useState<string[]>([]);
-  const [exportFormat, setExportFormat] = useState<'pdf' | 'excel'>('pdf');
 
   // Bid modal states
   const [bidModalOpen, setBidModalOpen] = useState(false);
@@ -197,9 +196,24 @@ export default function TenderProApp() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    setRegisterOpen(false);
-    setLoginOpen(true);
-    toast.success('Registrasi berhasil! Silakan login.');
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(registerForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setRegisterOpen(false);
+        setLoginOpen(true);
+        setEmail(registerForm.email);
+        toast.success('Registrasi berhasil! Silakan login.');
+      } else {
+        toast.error(data.message || 'Registrasi gagal. Silakan coba lagi.');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan. Silakan coba lagi.');
+    }
   };
 
   const handleCreateProject = async () => {
@@ -353,9 +367,9 @@ export default function TenderProApp() {
         <ExportModal
           open={exportModalOpen}
           onOpenChange={setExportModalOpen}
-          format={exportFormat}
-          setFormat={setExportFormat}
-          onExport={() => {}}
+          userId={user.id}
+          userRole="OWNER"
+          projects={projects.map(p => ({ id: p.id, title: p.title }))}
         />
       </>
     );

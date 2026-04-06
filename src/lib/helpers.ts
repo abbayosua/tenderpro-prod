@@ -83,19 +83,25 @@ export function formatDateTime(date: string | Date): string {
 export function getStatusColor(status: string): string {
   switch (status) {
     case 'OPEN':
-      return 'bg-primary';
+      return 'bg-primary text-white';
     case 'IN_PROGRESS':
-      return 'bg-blue-600';
+      return 'bg-blue-600 text-white';
     case 'COMPLETED':
-      return 'bg-green-600';
+      return 'bg-green-600 text-white';
     case 'PENDING':
       return 'bg-yellow-100 text-yellow-700';
     case 'ACCEPTED':
-      return 'bg-primary';
+      return 'bg-primary text-white';
     case 'REJECTED':
       return 'bg-red-100 text-red-700';
+    case 'CANCELLED':
+      return 'bg-slate-200 text-slate-600';
+    case 'WITHDRAWN':
+      return 'bg-orange-100 text-orange-700';
+    case 'DRAFT':
+      return 'bg-slate-100 text-slate-500';
     default:
-      return '';
+      return 'bg-slate-100 text-slate-600';
   }
 }
 
@@ -116,6 +122,12 @@ export function getStatusLabel(status: string): string {
       return 'Diterima';
     case 'REJECTED':
       return 'Ditolak';
+    case 'CANCELLED':
+      return 'Dibatalkan';
+    case 'WITHDRAWN':
+      return 'Ditarik';
+    case 'DRAFT':
+      return 'Draf';
     default:
       return status;
   }

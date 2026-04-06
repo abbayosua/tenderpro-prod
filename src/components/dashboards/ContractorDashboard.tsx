@@ -13,7 +13,7 @@ import {
   Building2, Star, MapPin, Clock, Briefcase, CheckCircle, TrendingUp,
   FileText, Upload, Plus, Search, MessageSquare, FolderOpen, LogOut,
   X, Edit, Trash2, DollarSign, TrendingDown, Minus, RefreshCw,
-  Sparkles, Zap, Shield, Target, Award, ChevronDown, ChevronUp, ChevronRight, Loader2, BarChart3, Badge as BadgeIcon
+  Sparkles, Zap, Shield, Target, Award, ChevronDown, ChevronUp, ChevronRight, Loader2, BarChart3, Badge as BadgeIcon, Wallet
 } from 'lucide-react';
 import { StatsCardsSkeleton, ChartSkeleton } from '@/components/shared/DashboardSkeletons';
 import { toast } from 'sonner';
@@ -25,6 +25,7 @@ import { PortfolioModal } from '@/components/modals/PortfolioModal';
 import { ChatModal } from '@/components/modals/ChatModal';
 import { QuickActions } from '@/components/dashboards/contractor/QuickActions';
 import { ProfileCompletion } from '@/components/dashboards/contractor/ProfileCompletion';
+import { EarningsOverview } from '@/components/dashboards/contractor/EarningsOverview';
 import type { ContractorChartData, RefreshInterval } from '@/hooks/useDashboard';
 
 interface Portfolio {
@@ -567,6 +568,7 @@ export function ContractorDashboard({
           <TabsList className="mb-6 flex flex-wrap">
             <TabsTrigger value="tender"><Search className="h-4 w-4 mr-2" /> Cari Proyek</TabsTrigger>
             <TabsTrigger value="bids"><FileText className="h-4 w-4 mr-2" /> Penawaran Saya</TabsTrigger>
+            <TabsTrigger value="earnings"><Wallet className="h-4 w-4 mr-2" /> Pendapatan</TabsTrigger>
             <TabsTrigger value="portfolio"><FolderOpen className="h-4 w-4 mr-2" /> Portofolio</TabsTrigger>
           </TabsList>
 
@@ -921,6 +923,11 @@ export function ContractorDashboard({
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* Pendapatan (Earnings) Tab */}
+          <TabsContent value="earnings">
+            <EarningsOverview userId={user.id} />
           </TabsContent>
 
           {/* Portfolio Tab */}

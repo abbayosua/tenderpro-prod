@@ -10,12 +10,13 @@ import {
   Building2, Star, MapPin, Briefcase, CheckCircle,
   User, UserPlus, Eye, Calculator, Sparkles, Globe,
   FileCheck, Shield, Award, Lightbulb, TrendingUp,
-  Menu, LogIn, ChevronRight
+  Menu, LogIn, ChevronRight, CreditCard
 } from 'lucide-react';
 import { Contractor, Project } from '@/types';
 import { formatRupiah } from '@/lib/helpers';
 import { BackgroundPaths } from '@/components/background-paths';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { ScrollToTop } from '@/components/shared/ScrollToTop';
 import {
   HeroSection,
   TrustSection,
@@ -24,6 +25,7 @@ import {
   SuccessProjectsSection,
   ProjectCategoriesSection,
   PartnersSection,
+  PricingSection,
   FAQSection,
   CTASection,
   FooterSection,
@@ -84,6 +86,9 @@ export function LandingPage({
             </a>
             <a href="#how-it-works" className="text-slate-600 hover:text-primary transition-colors text-sm font-medium">Cara Kerja</a>
             <a href="#testimonials" className="text-slate-600 hover:text-primary transition-colors text-sm font-medium">Testimoni</a>
+            <a href="#pricing" className="text-slate-600 hover:text-primary transition-colors flex items-center gap-1 text-sm font-medium">
+              <CreditCard className="h-4 w-4" /> Harga
+            </a>
             <a href="#faq" className="text-slate-600 hover:text-primary transition-colors text-sm font-medium">FAQ</a>
           </nav>
           <div className="flex items-center gap-3">
@@ -176,6 +181,15 @@ export function LandingPage({
                           <div className="flex items-center gap-3">
                             <Star className="h-4 w-4 text-slate-400" />
                             <span>Testimoni</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                        </a>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <a href="#pricing" className="flex items-center justify-between px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 hover:text-primary transition-all duration-200 font-medium">
+                          <div className="flex items-center gap-3">
+                            <CreditCard className="h-4 w-4 text-slate-400" />
+                            <span>Harga</span>
                           </div>
                           <ChevronRight className="h-4 w-4 text-slate-300" />
                         </a>
@@ -503,6 +517,9 @@ export function LandingPage({
       {/* Partners Section */}
       <PartnersSection />
 
+      {/* Pricing Section */}
+      <PricingSection />
+
       {/* FAQ Section */}
       <FAQSection />
 
@@ -511,6 +528,9 @@ export function LandingPage({
 
       {/* Footer Section */}
       <FooterSection />
+
+      {/* Scroll to Top Button */}
+      <ScrollToTop />
     </div>
   );
 }

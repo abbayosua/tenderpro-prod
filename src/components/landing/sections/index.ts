@@ -5,6 +5,7 @@ export { TestimonialsSection } from './TestimonialsSection';
 export { SuccessProjectsSection } from './SuccessProjectsSection';
 export { ProjectCategoriesSection } from './ProjectCategoriesSection';
 export { PartnersSection } from './PartnersSection';
+export { PricingSection } from './PricingSection';
 export { FAQSection } from './FAQSection';
 export { CTASection } from './CTASection';
 export { FooterSection } from './FooterSection';

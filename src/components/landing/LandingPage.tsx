@@ -83,6 +83,8 @@ export function LandingPage({
               <Calculator className="h-4 w-4" /> Estimasi
             </a>
             <a href="#how-it-works" className="text-slate-600 hover:text-primary transition-colors text-sm font-medium">Cara Kerja</a>
+            <a href="#testimonials" className="text-slate-600 hover:text-primary transition-colors text-sm font-medium">Testimoni</a>
+            <a href="#faq" className="text-slate-600 hover:text-primary transition-colors text-sm font-medium">FAQ</a>
           </nav>
           <div className="flex items-center gap-3">
             <ThemeToggle />
@@ -165,6 +167,24 @@ export function LandingPage({
                           <div className="flex items-center gap-3">
                             <Lightbulb className="h-4 w-4 text-slate-400" />
                             <span>Cara Kerja</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                        </a>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <a href="#testimonials" className="flex items-center justify-between px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 hover:text-primary transition-all duration-200 font-medium">
+                          <div className="flex items-center gap-3">
+                            <Star className="h-4 w-4 text-slate-400" />
+                            <span>Testimoni</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-300" />
+                        </a>
+                      </SheetClose>
+                      <SheetClose asChild>
+                        <a href="#faq" className="flex items-center justify-between px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 hover:text-primary transition-all duration-200 font-medium">
+                          <div className="flex items-center gap-3">
+                            <FileCheck className="h-4 w-4 text-slate-400" />
+                            <span>FAQ</span>
                           </div>
                           <ChevronRight className="h-4 w-4 text-slate-300" />
                         </a>

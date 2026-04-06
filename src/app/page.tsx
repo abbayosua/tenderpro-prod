@@ -278,7 +278,7 @@ export default function TenderProApp() {
   };
 
   // Render Owner Dashboard with real data
-  if (activeTab === 'dashboard' && user?.role === 'OWNER' && dashboard.ownerStats) {
+  if (activeTab === 'dashboard' && user?.role === 'OWNER') {
     return (
       <>
         <OwnerDashboard
@@ -330,6 +330,7 @@ export default function TenderProApp() {
           project={newProject}
           setProject={setNewProject}
           onSubmit={handleCreateProject}
+          ownerId={user.id}
         />
         <VerificationModal
           open={verificationOpen}
@@ -376,7 +377,7 @@ export default function TenderProApp() {
   }
 
   // Render Contractor Dashboard with real data
-  if (activeTab === 'dashboard' && user?.role === 'CONTRACTOR' && dashboard.contractorStats) {
+  if (activeTab === 'dashboard' && user?.role === 'CONTRACTOR') {
     return (
       <>
         <ContractorDashboard

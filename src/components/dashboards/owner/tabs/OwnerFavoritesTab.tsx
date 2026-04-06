@@ -9,9 +9,11 @@ export function OwnerFavoritesTab({ favorites, onRemoveFavorite }: OwnerFavorite
     <Card>
       <CardContent className="p-6">
         {!favorites || favorites.length === 0 ? (
-          <div className="text-center py-8">
-            <Heart className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-            <p className="text-slate-500 mb-4">Belum ada kontraktor favorit</p>
+          <div className="text-center py-12">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Heart className="h-8 w-8 text-slate-300" />
+            </div>
+            <p className="text-slate-600 font-medium mb-1">Belum ada kontraktor favorit</p>
             <p className="text-sm text-slate-400">Tambahkan kontraktor ke favorit dari daftar penawaran</p>
           </div>
         ) : (

@@ -91,9 +91,12 @@ export function OwnerBidsTab({
 
         <ScrollArea className="h-96">
           {filteredAndSortedBids.length === 0 ? (
-            <div className="text-center py-8 text-slate-500">
-              <FileText className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-              <p>Belum ada penawaran masuk</p>
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FileText className="h-8 w-8 text-slate-300" />
+              </div>
+              <p className="text-slate-600 font-medium mb-1">Belum ada penawaran masuk</p>
+              <p className="text-sm text-slate-400">Penawaran dari kontraktor akan muncul di sini setelah mereka mengajukan bid</p>
             </div>
           ) : (
             filteredAndSortedBids.map(bid => {

@@ -8,6 +8,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Calculator, Loader2, Sparkles, TrendingUp, TrendingDown, Info,
   Lightbulb, Hammer, Users, Wrench, FileText, BarChart3
 } from 'lucide-react';
@@ -124,15 +131,16 @@ export function CostEstimatorModal({ open, onOpenChange }: CostEstimatorModalPro
               <div className="grid gap-4">
                 <div>
                   <label className="text-sm font-medium mb-1.5 block">Kategori Proyek</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  >
-                    {PROJECT_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger className="w-full h-10">
+                      <SelectValue placeholder="Pilih kategori proyek" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROJECT_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
-import { FolderOpen, Camera, Download, FileText, CheckCircle, Clock, Eye } from 'lucide-react';
+import { FolderOpen, Camera, Download, FileText, CheckCircle, Clock, Eye, Upload } from 'lucide-react';
 import { DocumentPreviewModal } from '@/components/modals/DocumentPreviewModal';
 import type { OwnerDocumentsTabProps, OwnerDocument } from './types';
 
@@ -105,10 +105,15 @@ export function OwnerDocumentsTab({
           </div>
 
           {filteredDocuments.length === 0 ? (
-            <div className="text-center py-8">
-              <FolderOpen className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500 mb-2">Belum ada dokumen</p>
-              <p className="text-sm text-slate-400">Dokumen proyek akan muncul di sini setelah diunggah</p>
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <FolderOpen className="h-8 w-8 text-slate-300" />
+              </div>
+              <p className="text-slate-600 font-medium mb-1">Belum ada dokumen</p>
+              <p className="text-sm text-slate-400 mb-4">Dokumen proyek akan muncul di sini setelah diunggah</p>
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => setWebcamModalOpen(true)}>
+                <Upload className="h-4 w-4 mr-2" /> Unggah Dokumen
+              </Button>
             </div>
           ) : (
             <div className="space-y-3">

@@ -13,8 +13,9 @@ import {
   Building2, Star, MapPin, Clock, Briefcase, CheckCircle, TrendingUp,
   FileText, Upload, Plus, Search, MessageSquare, FolderOpen, LogOut,
   X, Edit, Trash2, DollarSign, TrendingDown, Minus, RefreshCw,
-  Sparkles, Zap, Shield, Target, Award, ChevronDown, ChevronUp, ChevronRight, Loader2
+  Sparkles, Zap, Shield, Target, Award, ChevronDown, ChevronUp, ChevronRight, Loader2, BarChart3, Badge as BadgeIcon
 } from 'lucide-react';
+import { StatsCardsSkeleton, ChartSkeleton } from '@/components/shared/DashboardSkeletons';
 import { toast } from 'sonner';
 import { ContractorStats, Project } from '@/types';
 import { formatRupiah } from '@/lib/helpers';
@@ -22,6 +23,8 @@ import { SimpleStatsCard } from '@/components/shared/StatsCard';
 import { VerificationAlert } from '@/components/shared/VerificationAlert';
 import { PortfolioModal } from '@/components/modals/PortfolioModal';
 import { ChatModal } from '@/components/modals/ChatModal';
+import { QuickActions } from '@/components/dashboards/contractor/QuickActions';
+import { ProfileCompletion } from '@/components/dashboards/contractor/ProfileCompletion';
 import type { ContractorChartData, RefreshInterval } from '@/hooks/useDashboard';
 
 interface Portfolio {
@@ -46,7 +49,7 @@ interface AIRecommendation {
 
 interface ContractorDashboardProps {
   user: { id: string; name: string; verificationStatus: string };
-  contractorStats: ContractorStats;
+  contractorStats: ContractorStats | null;
   contractorChartData?: ContractorChartData | null;
   onLogout: () => void;
   onShowVerification: () => void;
@@ -257,88 +260,124 @@ export function ContractorDashboard({
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="TenderPro" className="h-8 w-auto" />
-            <span className="text-2xl font-bold text-slate-800">TenderPro</span>
-          </div>
-          <div className="flex items-center gap-4">
-            {/* Refresh Controls */}
-            <div className="flex items-center gap-2 mr-2">
-              {/* Last refreshed indicator */}
-              <span className="text-xs text-slate-500 hidden sm:inline">
-                Diperbarui: {formatLastRefreshed(lastRefreshed)}
-              </span>
+      <header className="bg-white sticky top-0 z-40">
+        <div className="relative">
+          {/* Subtle background pattern */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(0,0,0,0.02)_1px,transparent_1px),radial-gradient(circle_at_100%_0%,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[length:20px_20px]" />
+          <div className="relative max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src="/logo.png" alt="TenderPro" className="h-8 w-auto" />
+              <span className="text-2xl font-bold text-slate-800">TenderPro</span>
+            </div>
+            <div className="flex items-center gap-4">
+              {/* Refresh Controls */}
+              <div className="flex items-center gap-2 mr-2">
+                {/* Last refreshed indicator */}
+                <span className="text-xs text-slate-500 hidden sm:inline">
+                  Diperbarui: {formatLastRefreshed(lastRefreshed)}
+                </span>
+                
+                {/* Refresh interval selector */}
+                <Select
+                  value={refreshInterval}
+                  onValueChange={(value) => onSetRefreshInterval?.(value as RefreshInterval)}
+                >
+                  <SelectTrigger className="w-20 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30s">30s</SelectItem>
+                    <SelectItem value="1m">1m</SelectItem>
+                    <SelectItem value="5m">5m</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {/* Manual refresh button */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onRefresh?.()}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
               
-              {/* Refresh interval selector */}
-              <Select
-                value={refreshInterval}
-                onValueChange={(value) => onSetRefreshInterval?.(value as RefreshInterval)}
-              >
-                <SelectTrigger className="w-20 h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30s">30s</SelectItem>
-                  <SelectItem value="1m">1m</SelectItem>
-                  <SelectItem value="5m">5m</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {/* Manual refresh button */}
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => onRefresh?.()}
-                disabled={isRefreshing}
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <Button variant="ghost" size="icon" onClick={() => setChatModalOpen(true)}>
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+              <div className="text-right hidden sm:block">
+                <p className="font-medium">{user.name}</p>
+                <Badge variant="secondary" className="text-xs font-normal">
+                  <Shield className="h-3 w-3 mr-1" /> Kontraktor
+                </Badge>
+              </div>
+              <Button variant="outline" onClick={onLogout}>
+                <LogOut className="h-4 w-4 mr-2" /> Keluar
               </Button>
             </div>
-            
-            <Button variant="ghost" size="icon" onClick={() => setChatModalOpen(true)}>
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-            <div className="text-right">
-              <p className="font-medium">{user.name}</p>
-              <p className="text-sm text-slate-500">Kontraktor</p>
-            </div>
-            <Button variant="outline" onClick={onLogout}>
-              <LogOut className="h-4 w-4 mr-2" /> Keluar
-            </Button>
           </div>
+          {/* Gradient bottom border */}
+          <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <VerificationAlert user={user} onUploadClick={onShowVerification} />
 
+        {/* Welcome Message */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-slate-800">Selamat datang, {user.name}!</h2>
+          <p className="text-sm text-slate-500 mt-1">Temukan proyek dan kelola penawaran Anda</p>
+        </div>
+
         {/* Stats Cards */}
+        {!contractorStats ? (
+          <StatsCardsSkeleton />
+        ) : (
         <div className="grid md:grid-cols-4 gap-4 mb-8">
           <SimpleStatsCard label="Total Penawaran" value={contractorStats.totalBids} icon={FileText} color="primary" />
           <SimpleStatsCard label="Diterima" value={contractorStats.acceptedBids} icon={CheckCircle} color="primary" />
           <SimpleStatsCard label="Pending" value={contractorStats.pendingBids} icon={Clock} color="yellow" />
           <SimpleStatsCard label="Win Rate" value={`${contractorStats.winRate}%`} icon={TrendingUp} color="purple" />
         </div>
+        )}
 
-        {/* Quick Actions */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={() => {
-            const tenderTab = document.querySelector('[value="tender"]') as HTMLButtonElement;
-            if (tenderTab) tenderTab.click();
-          }}>
-            <Search className="h-4 w-4 mr-2" /> Cari Proyek
-          </Button>
-          <Button variant="outline" onClick={onShowVerification}>
-            <Upload className="h-4 w-4 mr-2" /> Verifikasi Akun
-          </Button>
+        {/* Profile Completion Checker */}
+        <div className="mb-6">
+          <ProfileCompletion userId={user.id} onAction={(action) => {
+            if (action === 'Portfolio') handleAddPortfolio();
+            else if (action === 'Verifikasi') onShowVerification();
+            else toast.info(`Fitur "${action}" akan segera tersedia`);
+          }} />
         </div>
 
+        {/* Quick Actions Widget */}
+        {contractorStats && (
+          <div className="mb-6">
+            <QuickActions
+              onSearchProjects={() => {
+                const tenderTab = document.querySelector('[value="tender"]') as HTMLButtonElement;
+                if (tenderTab) tenderTab.click();
+              }}
+              onShowBidHistory={() => {
+                const bidsTab = document.querySelector('[value="bids"]') as HTMLButtonElement;
+                if (bidsTab) bidsTab.click();
+              }}
+              onEditProfile={() => toast.info('Fitur edit profil akan segera tersedia')}
+              onUploadPortfolio={handleAddPortfolio}
+              onShowCertifications={() => toast.info('Fitur sertifikasi akan segera tersedia')}
+              onShowRatings={() => toast.info('Fitur rating akan segera tersedia')}
+            />
+          </div>
+        )}
+
         {/* Performance Charts Section */}
-        {contractorChartData && (
+        {!contractorChartData && contractorStats ? (
+          <ChartSkeleton />
+        ) : contractorChartData && (
           <>
             {/* Win Rate Trend Card */}
             <Card className="mb-6">
@@ -616,7 +655,7 @@ export function ContractorDashboard({
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
-                {searchResults.length === 0 && contractorStats.availableProjects.length === 0 ? (
+                {searchResults.length === 0 && contractorStats?.availableProjects.length === 0 ? (
                   <div className="text-center py-8">
                     <Search className="h-12 w-12 text-slate-300 mx-auto mb-4" />
                     <p className="text-slate-500 mb-4">Tidak ada proyek tersedia saat ini</p>
@@ -624,7 +663,7 @@ export function ContractorDashboard({
                   </div>
                 ) : (
                   <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
-                    {(searchResults.length > 0 ? searchResults : contractorStats.availableProjects).map((project) => (
+                    {(searchResults.length > 0 ? searchResults : contractorStats?.availableProjects || []).map((project) => (
                       <div key={project.id} className="border rounded-lg p-4 hover:bg-slate-50 transition-colors">
                         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-3">
                           <div className="flex-1">

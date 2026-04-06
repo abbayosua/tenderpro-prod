@@ -6,12 +6,12 @@ import { ChartContainer } from '@/components/ui/chart';
 import {
   ChartTooltip, ChartTooltipContent, type ChartConfig
 } from '@/components/ui/chart';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend } from 'recharts';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend, ResponsiveContainer } from 'recharts';
 import {
   Building2, Star, MapPin, Clock, Briefcase, CheckCircle, ChevronRight,
   FileText, Eye, Upload, Plus, DollarSign, BarChart3,
   Video, Flag, FolderOpen, Search, Scale, Heart, Zap, Trash2, Download, Calendar,
-  MessageSquare, Bell, X, User, LogOut, RefreshCw
+  MessageSquare, Bell, X, User, LogOut, RefreshCw, BarChart2, Shield
 } from 'lucide-react';
 import { ChatModal } from '@/components/modals/ChatModal';
 import { toast } from 'sonner';
@@ -21,6 +21,7 @@ import { StatsCard } from '@/components/shared/StatsCard';
 import { VerificationAlert } from '@/components/shared/VerificationAlert';
 import { NotificationPanel } from '@/components/shared/NotificationPanel';
 import { WebcamUploadModal } from '@/components/modals/WebcamUploadModal';
+import { StatsCardsSkeleton, ChartSkeleton } from '@/components/shared/DashboardSkeletons';
 import type { ChartData, PaymentSummary, ProjectMilestoneBreakdown } from '@/hooks/useDashboard';
 import {
   OwnerProjectsTab,
@@ -30,12 +31,13 @@ import {
   OwnerDocumentsTab,
   OwnerPaymentsTab,
 } from './owner/tabs';
+import { BudgetTracker } from './owner/BudgetTracker';
 import type { AllProjectDocument, RefreshInterval } from '@/hooks/useDashboard';
 
 // Define the props interface
 interface OwnerDashboardProps {
-  user: { id: string; name: string; verificationStatus: string; avatar?: string };
-  ownerStats: OwnerStats;
+  user: { id: string; name: string; verificationStatus: string; avatar?: string; role?: string };
+  ownerStats: OwnerStats | null;
   notifications: Notification[];
   unreadCount: number;
   favorites: Favorite[];
@@ -241,74 +243,91 @@ export function OwnerDashboard({
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
-      <header className="bg-white border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="TenderPro" className="h-8 w-auto" />
-            <span className="text-2xl font-bold text-slate-800">TenderPro</span>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* Refresh Controls */}
-            <div className="flex items-center gap-2 mr-2">
-              {/* Last refreshed indicator */}
-              <span className="text-xs text-slate-500 hidden sm:inline">
-                Diperbarui: {formatLastRefreshed(lastRefreshed)}
-              </span>
+      <header className="bg-white sticky top-0 z-40">
+        <div className="relative">
+          {/* Subtle background pattern */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(0,0,0,0.02)_1px,transparent_1px),radial-gradient(circle_at_100%_0%,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[length:20px_20px]" />
+          <div className="relative max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src="/logo.png" alt="TenderPro" className="h-8 w-auto" />
+              <span className="text-2xl font-bold text-slate-800">TenderPro</span>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Refresh Controls */}
+              <div className="flex items-center gap-2 mr-2">
+                {/* Last refreshed indicator */}
+                <span className="text-xs text-slate-500 hidden sm:inline">
+                  Diperbarui: {formatLastRefreshed(lastRefreshed)}
+                </span>
+                
+                {/* Refresh interval selector */}
+                <Select
+                  value={refreshInterval}
+                  onValueChange={(value) => onSetRefreshInterval?.(value as RefreshInterval)}
+                >
+                  <SelectTrigger className="w-20 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30s">30s</SelectItem>
+                    <SelectItem value="1m">1m</SelectItem>
+                    <SelectItem value="5m">5m</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {/* Manual refresh button */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onRefresh?.()}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
               
-              {/* Refresh interval selector */}
-              <Select
-                value={refreshInterval}
-                onValueChange={(value) => onSetRefreshInterval?.(value as RefreshInterval)}
-              >
-                <SelectTrigger className="w-20 h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="30s">30s</SelectItem>
-                  <SelectItem value="1m">1m</SelectItem>
-                  <SelectItem value="5m">5m</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {/* Manual refresh button */}
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => onRefresh?.()}
-                disabled={isRefreshing}
-              >
-                <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <NotificationPanel
+                notifications={notifications}
+                unreadCount={unreadCount}
+                isOpen={showNotifications}
+                onToggle={() => setShowNotifications(!showNotifications)}
+                onMarkRead={onMarkNotificationRead}
+                onMarkAllRead={onMarkAllRead}
+              />
+              <Button variant="ghost" size="icon" className="relative" onClick={() => setChatModalOpen(true)}>
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+              <div className="text-right hidden sm:block">
+                <p className="font-medium">{user.name}</p>
+                <Badge variant="secondary" className="text-xs font-normal">
+                  <Shield className="h-3 w-3 mr-1" /> Pemilik Proyek
+                </Badge>
+              </div>
+              <Button variant="outline" onClick={onLogout}>
+                <LogOut className="h-4 w-4 mr-2" /> Keluar
               </Button>
             </div>
-            
-            <NotificationPanel
-              notifications={notifications}
-              unreadCount={unreadCount}
-              isOpen={showNotifications}
-              onToggle={() => setShowNotifications(!showNotifications)}
-              onMarkRead={onMarkNotificationRead}
-              onMarkAllRead={onMarkAllRead}
-            />
-            <Button variant="ghost" size="icon" className="relative" onClick={() => setChatModalOpen(true)}>
-              <MessageSquare className="h-5 w-5" />
-            </Button>
-            <div className="text-right">
-              <p className="font-medium">{user.name}</p>
-              <p className="text-sm text-slate-500">Pemilik Proyek</p>
-            </div>
-            <Button variant="outline" onClick={onLogout}>
-              <LogOut className="h-4 w-4 mr-2" /> Keluar
-            </Button>
           </div>
+          {/* Gradient bottom border */}
+          <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
         </div>
       </header>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
         <VerificationAlert user={user} onUploadClick={onShowVerification} />
 
+        {/* Welcome Message */}
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold text-slate-800">Selamat datang, {user.name}!</h2>
+          <p className="text-sm text-slate-500 mt-1">Kelola proyek dan pantau progress konstruksi Anda</p>
+        </div>
+
         {/* Stats Cards */}
+        {!ownerStats ? (
+          <StatsCardsSkeleton />
+        ) : (
         <div className="grid md:grid-cols-4 gap-4 mb-6">
           <StatsCard
             label="Total Proyek"
@@ -343,6 +362,7 @@ export function OwnerDashboard({
             color="purple"
           />
         </div>
+        )}
 
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-3 mb-6">
@@ -371,13 +391,26 @@ export function OwnerDashboard({
         </div>
 
         {/* Charts */}
+        {!chartData ? (
+          <ChartSkeleton />
+        ) : (
         <div className="grid md:grid-cols-2 gap-6 mb-8">
-          <Card>
+          <Card className="shadow-sm hover:shadow-md transition-shadow border">
             <CardHeader>
-              <CardTitle className="text-lg">Proyek per Kategori</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart2 className="h-5 w-5 text-primary" />
+                Proyek per Kategori
+              </CardTitle>
               <CardDescription>Distribusi proyek berdasarkan kategori</CardDescription>
             </CardHeader>
             <CardContent>
+              {projectCategoryData.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center">
+                  <BarChart2 className="h-10 w-10 text-slate-300 mb-3" />
+                  <p className="text-slate-400 font-medium">Tidak ada data</p>
+                  <p className="text-xs text-slate-400 mt-1">Data akan muncul setelah Anda membuat proyek</p>
+                </div>
+              ) : (
               <ChartContainer config={chartConfig} className="h-64">
                 <PieChart>
                   <Pie
@@ -387,43 +420,67 @@ export function OwnerDashboard({
                     cx="50%"
                     cy="50%"
                     outerRadius={80}
+                    innerRadius={30}
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     labelLine={false}
+                    className="transition-all duration-500"
                   >
                     {projectCategoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                      <Cell key={`cell-${index}`} fill={entry.fill} stroke="white" strokeWidth={2} />
                     ))}
                   </Pie>
                   <ChartTooltip content={<ChartTooltipContent />} />
                 </PieChart>
               </ChartContainer>
-              {projectCategoryData.length === 0 && (
-                <p className="text-center text-sm text-slate-400 mt-2">Belum ada data</p>
               )}
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-sm hover:shadow-md transition-shadow border">
             <CardHeader>
-              <CardTitle className="text-lg">Progress Bulanan</CardTitle>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Progress Bulanan
+              </CardTitle>
               <CardDescription>Proyek baru vs selesai per bulan</CardDescription>
             </CardHeader>
             <CardContent>
+              {monthlyProgressData.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center">
+                  <BarChart3 className="h-10 w-10 text-slate-300 mb-3" />
+                  <p className="text-slate-400 font-medium">Tidak ada data</p>
+                  <p className="text-xs text-slate-400 mt-1">Data akan muncul setelah Anda membuat proyek</p>
+                </div>
+              ) : (
               <ChartContainer config={chartConfig} className="h-64">
                 <BarChart data={monthlyProgressData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
                   <XAxis dataKey="month" tickLine={false} axisLine={false} />
                   <YAxis tickLine={false} axisLine={false} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="proyek" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="selesai" fill="hsl(48, 96%, 53%)" radius={[4, 4, 0, 0]} />
+                  <defs>
+                    <linearGradient id="gradientProyek" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={1} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
+                    </linearGradient>
+                    <linearGradient id="gradientSelesai" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(48, 96%, 53%)" stopOpacity={1} />
+                      <stop offset="100%" stopColor="hsl(48, 96%, 53%)" stopOpacity={0.6} />
+                    </linearGradient>
+                  </defs>
+                  <Bar dataKey="proyek" fill="url(#gradientProyek)" radius={[4, 4, 0, 0]} className="transition-all duration-500" />
+                  <Bar dataKey="selesai" fill="url(#gradientSelesai)" radius={[4, 4, 0, 0]} className="transition-all duration-500" />
                 </BarChart>
               </ChartContainer>
-              {monthlyProgressData.length === 0 && (
-                <p className="text-center text-sm text-slate-400 mt-2">Belum ada data</p>
               )}
             </CardContent>
           </Card>
+        </div>
+        )}
+
+        {/* Budget Tracker Widget */}
+        <div className="mb-6">
+          <BudgetTracker userId={user.id} />
         </div>
 
         {/* Main Content Tabs */}
@@ -541,7 +598,7 @@ export function OwnerDashboard({
 
       {/* Footer */}
       <footer className="bg-slate-900 text-white py-6 text-center text-sm mt-8">
-        <p>© 2024 TenderPro. All rights reserved.</p>
+        <p>© {new Date().getFullYear()} TenderPro. All rights reserved.</p>
       </footer>
     </div>
   );

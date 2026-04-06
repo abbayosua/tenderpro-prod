@@ -10,10 +10,10 @@ const footerLinks = {
     { label: 'Kontraktor Lokal', href: '#local-contractors' },
   ],
   kategori: [
-    { label: 'Pembangunan Rumah', href: '#' },
-    { label: 'Renovasi', href: '#' },
-    { label: 'Komersial', href: '#' },
-    { label: 'Interior', href: '#' },
+    { label: 'Pembangunan Rumah', href: '#categories' },
+    { label: 'Renovasi', href: '#categories' },
+    { label: 'Komersial', href: '#categories' },
+    { label: 'Interior', href: '#categories' },
   ],
   kontak: [
     { icon: Mail, text: 'info@tenderpro.id' },

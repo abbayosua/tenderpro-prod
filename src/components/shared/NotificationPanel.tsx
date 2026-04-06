@@ -45,9 +45,12 @@ export function NotificationPanel({
           </div>
           <ScrollArea className="h-80">
             {notifications.length === 0 ? (
-              <div className="p-4 text-center text-slate-500">
-                <Bell className="h-8 w-8 mx-auto mb-2 text-slate-300" />
-                <p>Tidak ada notifikasi</p>
+              <div className="p-6 text-center">
+                <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Bell className="h-6 w-6 text-slate-300" />
+                </div>
+                <p className="text-slate-500 font-medium">Tidak ada notifikasi</p>
+                <p className="text-xs text-slate-400 mt-1">Notifikasi baru akan muncul di sini</p>
               </div>
             ) : (
               notifications.map((notif) => (

@@ -42,7 +42,7 @@ function StarRating({ rating }: { rating: number }) {
 
 export function TestimonialsSection() {
   return (
-    <section className="relative z-10 py-20 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
+    <section id="testimonials" className="relative z-10 py-20 bg-gradient-to-b from-slate-50 to-white overflow-hidden">
       <div className="absolute inset-0 dot-pattern opacity-30" />
       <div className="max-w-7xl mx-auto px-4 relative">
         <motion.div

@@ -33,8 +33,12 @@ export function OwnerTimelineTab({
       </CardHeader>
       <CardContent className="p-6">
         {activeOrCompletedProjects.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
-            <p>Tidak ada proyek yang sedang berjalan atau selesai</p>
+          <div className="text-center py-12 text-slate-500">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Flag className="h-8 w-8 text-slate-300" />
+            </div>
+            <p className="text-slate-600 font-medium mb-1">Belum ada timeline</p>
+            <p className="text-sm text-slate-400">Timeline akan muncul setelah proyek mulai berjalan</p>
           </div>
         ) : (
           <div className="space-y-4">

@@ -1,0 +1,579 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "sqlite"
+  url       = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  CONTRACTOR
+  ADMIN
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ProjectStatus {
+  DRAFT
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  password          String
+  name              String
+  phone             String?
+  role              UserRole @default(OWNER)
+  avatar            String?
+  isVerified        Boolean  @default(false)
+  verificationStatus VerificationStatus @default(PENDING)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  contractor        ContractorProfile?
+  owner             OwnerProfile?
+  projects          Project[]
+  bids              Bid[]
+  documents         Document[]
+  verificationRequests VerificationRequest[]
+  
+  // Chat relations
+  conversationsAsUser1 Conversation[] @relation("ConversationUser1")
+  conversationsAsUser2 Conversation[] @relation("ConversationUser2")
+  sentMessages      Message[]
+  
+  // Review relations
+  givenReviews      Review[] @relation("ReviewFromUser")
+  receivedReviews   Review[] @relation("ReviewToContractor")
+  
+  // Certification & Badge relations
+  certifications    Certification[]
+
+  // Project Member relations
+  projectMembers    ProjectMember[]
+
+  // Dispute relations
+  reportedDisputes  Dispute[] @relation("DisputeReporter")
+  disputesAgainst   Dispute[] @relation("DisputeAgainst")
+
+  // Favorite relations
+  favoriteUsers     Favorite[] @relation("FavoriteUser")
+  favoriteContractors Favorite[] @relation("FavoriteContractor")
+
+  // Project Template relations
+  projectTemplates  ProjectTemplate[]
+
+  // Activity Log relations
+  activityLogs      ActivityLog[]
+
+  @@map("users")
+}
+
+model ContractorProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  companyName       String
+  companyType       String?  // PT, CV, etc
+  npwp              String?
+  nib               String?  // Nomor Induk Berusaha
+  address           String?
+  city              String?
+  province          String?
+  postalCode        String?
+  
+  specialization    String?  // Renovasi, Pembangunan Baru, etc
+  experienceYears   Int      @default(0)
+  employeeCount     Int      @default(0)
+  
+  rating            Float    @default(0)
+  totalProjects     Int      @default(0)
+  completedProjects Int      @default(0)
+  
+  description       String?
+  
+  portfolios        Portfolio[]
+  bids              Bid[]
+  
+  // Certification & Badge relations
+  certifications    Certification[]
+  badges            Badge[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("contractor_profiles")
+}
+
+model OwnerProfile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  companyName       String?
+  companyType       String?
+  npwp              String?
+  address           String?
+  city              String?
+  province          String?
+  postalCode        String?
+  
+  totalProjects     Int      @default(0)
+  activeProjects    Int      @default(0)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("owner_profiles")
+}
+
+model Project {
+  id                String   @id @default(cuid())
+  ownerId           String
+  owner             User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  
+  title             String
+  description       String 
+  category          String   // Renovasi, Pembangunan Baru, Interior, etc
+  location          String
+  budget            Float
+  startDate         DateTime?
+  endDate           DateTime?
+  duration          Int?     // in days
+  
+  status            ProjectStatus @default(DRAFT)
+  
+  requirements      String? // JSON string for requirements list
+  images            String? // JSON string for image URLs
+  
+  bids              Bid[]
+  milestones        ProjectMilestone[]
+  documents         ProjectDocument[]
+  reviews           Review[]
+  members           ProjectMember[]
+  disputes          Dispute[]
+
+  // Activity Log relations
+  activityLogs      ActivityLog[]
+  
+  viewCount         Int      @default(0)
+  
+  // Escrow relation
+  escrow            EscrowTransaction?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("projects")
+}
+
+model Bid {
+  id                String   @id @default(cuid())
+  projectId         String
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  contractorId      String
+  contractor        User     @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  contractorProfile ContractorProfile @relation(fields: [contractorId], references: [userId], onDelete: Cascade)
+  
+  proposal          String 
+  price             Float
+  duration          Int      // in days
+  startDate         DateTime?
+  
+  status            BidStatus @default(PENDING)
+  
+  notes             String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([projectId, contractorId])
+  @@map("bids")
+}
+
+model Portfolio {
+  id                String   @id @default(cuid())
+  contractorId      String
+  contractor        ContractorProfile @relation(fields: [contractorId], references: [id], onDelete: Cascade)
+  
+  title             String
+  description       String 
+  category          String
+  clientName        String?
+  location          String?
+  year              Int
+  budget            Float?
+  
+  images            String? // JSON string for image URLs
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("portfolios")
+}
+
+model Document {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  type              String   // KTP, NPWP, SIUP, NIB, etc
+  name              String
+  fileUrl           String
+  verified          Boolean  @default(false)
+  verifiedAt        DateTime?
+  notes             String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("documents")
+}
+
+model VerificationRequest {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status            VerificationStatus @default(PENDING)
+  submittedAt       DateTime @default(now())
+  reviewedAt        DateTime?
+  reviewerNotes     String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("verification_requests")
+}
+
+// Favorites - untuk menyimpan kontraktor favorit
+model Favorite {
+  id                String   @id @default(cuid())
+  userId            String   // Owner yang menyimpan
+  user              User     @relation("FavoriteUser", fields: [userId], references: [id], onDelete: Cascade)
+  contractorId      String   // Kontraktor yang disimpan
+  contractor        User     @relation("FavoriteContractor", fields: [contractorId], references: [id], onDelete: Cascade)
+  
+  notes             String? // Catatan pribadi
+  createdAt         DateTime @default(now())
+
+  @@unique([userId, contractorId])
+  @@index([userId])
+  @@map("favorites")
+}
+
+// Notifications
+model Notification {
+  id                String   @id @default(cuid())
+  userId            String
+  
+  title             String
+  message           String 
+  type              String   // BID_RECEIVED, BID_ACCEPTED, PROJECT_UPDATE, etc
+  relatedId         String?  // ID terkait (project, bid, etc)
+  isRead            Boolean  @default(false)
+  
+  createdAt         DateTime @default(now())
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+// Project Milestones - untuk tracking progress
+model ProjectMilestone {
+  id                String   @id @default(cuid())
+  projectId         String
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  title             String
+  description       String?
+  amount            Float?
+  dueDate           DateTime?
+  completedAt       DateTime?
+  status            String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  order             Int      @default(0)
+  
+  payments          Payment[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("project_milestones")
+}
+
+// Payments - untuk tracking pembayaran
+model Payment {
+  id                String   @id @default(cuid())
+  milestoneId       String
+  milestone         ProjectMilestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  
+  amount            Float
+  method            String   // BANK_TRANSFER, CASH, etc
+  status            String   @default("PENDING") // PENDING, PAID, CONFIRMED, CANCELLED
+  transactionId     String?
+  notes             String?
+  proofUrl          String?
+  paidAt            DateTime?
+  confirmedAt       DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("payments")
+}
+
+// Project Documents - dokumen proyek
+model ProjectDocument {
+  id                String   @id @default(cuid())
+  projectId         String
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  uploadedBy        String   // userId yang upload
+  
+  name              String
+  type              String   // KONTRAK, GAMBAR, INVOICE, SPK, RAB, etc
+  fileUrl           String
+  fileSize          Float    // in KB
+  description       String?
+  
+  viewCount         Int      @default(0)  // Track document views
+  downloadCount     Int      @default(0)  // Track document downloads
+  
+  isApproved        Boolean  @default(false)
+  approvedAt        DateTime?
+  approvedBy        String?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("project_documents")
+}
+
+// Conversations - chat conversations between users
+model Conversation {
+  id                String   @id @default(cuid())
+  
+  user1Id           String
+  user1             User     @relation("ConversationUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+  
+  user2Id           String
+  user2             User     @relation("ConversationUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+  
+  projectId         String?  // Optional: conversation about a specific project
+  
+  lastMessageAt     DateTime @default(now())
+  lastMessage       String?
+  
+  messages          Message[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([user1Id, user2Id])
+  @@map("conversations")
+}
+
+// Messages - individual chat messages
+model Message {
+  id                String   @id @default(cuid())
+  conversationId    String
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  senderId          String
+  sender            User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  
+  content           String 
+  isRead            Boolean  @default(false)
+  readAt            DateTime?
+  
+  createdAt         DateTime @default(now())
+
+  @@map("messages")
+}
+
+// Reviews - rating & review system for contractors
+model Review {
+  id                String   @id @default(cuid())
+  
+  fromUserId        String   // Owner yang memberi review
+  fromUser          User     @relation("ReviewFromUser", fields: [fromUserId], references: [id], onDelete: Cascade)
+  
+  toContractorId    String   // Kontraktor yang di-review
+  toContractor      User     @relation("ReviewToContractor", fields: [toContractorId], references: [id], onDelete: Cascade)
+  
+  projectId         String   // Proyek terkait
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  rating            Int      // 1-5 stars
+  review            String? // Review text
+  
+  // Category ratings (1-5)
+  professionalism   Int      @default(5)
+  quality           Int      @default(5)
+  timeliness        Int      @default(5)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([fromUserId, projectId])
+
+  @@map("reviews")
+}
+
+// Certifications - sertifikasi kontraktor Indonesia
+model Certification {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contractorProfile ContractorProfile @relation(fields: [userId], references: [userId], onDelete: Cascade)
+  type        String   // SIUJK, SBU, SKA, SKT, ISO, etc
+  number      String
+  issuedBy    String   // Lembaga penerbit
+  issuedAt    DateTime
+  expiresAt   DateTime?
+  fileUrl     String
+  isVerified  Boolean  @default(false)
+  verifiedAt  DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("certifications")
+}
+
+// Badges - lencana pencapaian kontraktor
+model Badge {
+  id            String   @id @default(cuid())
+  contractorId  String
+  contractor    ContractorProfile @relation(fields: [contractorId], references: [userId], onDelete: Cascade)
+  type          String   // VERIFIED, TOP_RATED, FAST_DELIVERY, CERTIFIED, LOCAL_CHAMPION, etc
+  label         String
+  description   String?
+  icon          String?
+  earnedAt      DateTime @default(now())
+  
+  createdAt     DateTime @default(now())
+
+  @@map("badges")
+}
+
+// Project Members - anggota tim proyek
+model ProjectMember {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        String   @default("MEMBER") // PROJECT_MANAGER, SITE_ENGINEER, SUPERVISOR, MEMBER
+  joinedAt    DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+// Disputes - sengketa proyek
+model Dispute {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id])
+  reportedBy    String
+  reporter      User     @relation("DisputeReporter", fields: [reportedBy], references: [id])
+  againstUser   String?
+  against       User?    @relation("DisputeAgainst", fields: [againstUser], references: [id])
+
+  type          String   // PAYMENT, QUALITY, DELAY, SCOPE, OTHER
+  description   String 
+  status        String   @default("OPEN") // OPEN, UNDER_REVIEW, RESOLVED, ESCALATED
+  priority      String   @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+
+  resolution    String?
+  resolvedBy    String?
+  resolvedAt    DateTime?
+
+  attachments   String? // JSON array of file URLs
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("disputes")
+}
+
+// Project Templates - template proyek yang sering digunakan
+model ProjectTemplate {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title         String
+  description   String 
+  category      String
+  requirements  String?
+  budgetRange   String?  // e.g. "50000000-150000000"
+  durationRange String?  // e.g. "30-90"
+  isPublic      Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("project_templates")
+}
+
+// Escrow Transactions - sistem escrow untuk proyek
+model EscrowTransaction {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  project     Project  @relation(fields: [projectId], references: [id])
+  amount      Float
+  status      String   @default("PENDING") // PENDING, FUNDED, IN_PROGRESS, RELEASED, DISPUTED
+  fundedAt    DateTime?
+  releasedAt  DateTime?
+  bankName    String?
+  bankAccount String?
+  bankHolder  String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("escrow_transactions")
+}
+
+// Activity Logs - log aktivitas proyek
+model ActivityLog {
+  id          String   @id @default(cuid())
+  projectId   String?
+  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  action      String   // BID_SUBMITTED, BID_ACCEPTED, MILESTONE_COMPLETED, PAYMENT_MADE, DOCUMENT_UPLOADED, etc
+  description String 
+  metadata    String? // JSON for extra data
+
+  createdAt   DateTime @default(now())
+
+  @@index([projectId])
+  @@index([userId])
+  @@map("activity_logs")
+}

@@ -1,0 +1,658 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, Badge, Button, Input, Progress, Tabs, TabsContent, TabsList, TabsTrigger, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, ScrollArea } from '@/components/ui';
+import { ChartContainer } from '@/components/ui/chart';
+import {
+  ChartTooltip, ChartTooltipContent, type ChartConfig
+} from '@/components/ui/chart';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend, ResponsiveContainer } from 'recharts';
+import {
+  Building2, Star, MapPin, Clock, Briefcase, CheckCircle, ChevronRight,
+  FileText, Eye, Upload, Plus, DollarSign, BarChart3,
+  Video, Flag, FolderOpen, Search, Scale, Heart, Zap, Trash2, Download, Calendar,
+  MessageSquare, Bell, X, User, LogOut, RefreshCw, BarChart2, Shield, AlertTriangle, Settings
+} from 'lucide-react';
+import { ChatModal } from '@/components/modals/ChatModal';
+import { toast } from 'sonner';
+import { OwnerStats, Milestone, Favorite, Notification, Project } from '@/types';
+import { formatRupiah } from '@/lib/helpers';
+import { StatsCard } from '@/components/shared/StatsCard';
+import { VerificationAlert } from '@/components/shared/VerificationAlert';
+import { NotificationBell } from '@/components/shared/NotificationBell';
+import { WebcamUploadModal } from '@/components/modals/WebcamUploadModal';
+import { StatsCardsSkeleton, ChartSkeleton } from '@/components/shared/DashboardSkeletons';
+import type { ChartData, PaymentSummary, ProjectMilestoneBreakdown } from '@/hooks/useDashboard';
+import {
+  OwnerProjectsTab,
+  OwnerBidsTab,
+  OwnerFavoritesTab,
+  OwnerTimelineTab,
+  OwnerDocumentsTab,
+  OwnerPaymentsTab,
+} from './owner/tabs';
+import { BudgetTracker } from './owner/BudgetTracker';
+import { ProjectAnalytics } from './owner/ProjectAnalytics';
+import { SettingsPanel } from './SettingsPanel';
+import { PerformanceCharts } from '@/components/shared/PerformanceCharts';
+import { MilestoneGantt } from '@/components/shared/MilestoneGantt';
+import { ActivityFeed } from '@/components/shared/ActivityFeed';
+import type { AllProjectDocument, RefreshInterval } from '@/hooks/useDashboard';
+
+// Define the props interface
+interface OwnerDashboardProps {
+  user: { id: string; name: string; verificationStatus: string; avatar?: string; role?: string };
+  ownerStats: OwnerStats | null;
+  notifications: Notification[];
+  unreadCount: number;
+  favorites: Favorite[];
+  milestones: Milestone[];
+  progressPercent: number;
+  selectedBidsForCompare: string[];
+  chartData: ChartData | null;
+  paymentSummary: PaymentSummary | null;
+  milestoneBreakdown?: ProjectMilestoneBreakdown[];
+  allProjectDocuments: AllProjectDocument[];
+  onLogout: () => void;
+  onShowVerification: () => void;
+  onShowCreateProject: () => void;
+  onShowCCTV: (project: { id: string; title: string; status: string }) => void;
+  onShowProgress: (project: { id: string; title: string; category: string; budget: number }) => void;
+  onShowCompare: () => void;
+  onShowExport: () => void;
+  onAcceptBid: (bidId: string) => void;
+  onRejectBid: (bidId: string) => void;
+  onAddFavorite: (contractorId: string, notes?: string) => void;
+  onRemoveFavorite: (favoriteId: string) => void;
+  onMarkNotificationRead: (notificationId: string) => void;
+  onMarkAllRead: () => void;
+  onUpdateMilestone: (milestoneId: string, status: string, projectId?: string) => void;
+  toggleBidSelection: (bidId: string) => void;
+  loadMilestones: (projectId: string) => void;
+  // Auto-refresh props
+  refreshInterval?: RefreshInterval;
+  onSetRefreshInterval?: (interval: RefreshInterval) => void;
+  lastRefreshed?: Date | null;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+  onShowDispute?: (disputeId?: string) => void;
+}
+
+const chartConfig: ChartConfig = {
+  primary: { label: 'Pembangunan Baru', color: 'hsl(var(--primary))' },
+  chart2: { label: 'Renovasi', color: 'hsl(var(--chart-2))' },
+  chart3: { label: 'Komersial', color: 'hsl(var(--chart-3))' },
+  chart4: { label: 'Interior', color: 'hsl(var(--chart-4))' },
+  muted: { label: 'Lainnya', color: 'hsl(var(--muted-foreground))' },
+  proyek: { label: 'Proyek Baru', color: 'hsl(var(--primary))' },
+  selesai: { label: 'Proyek Selesai', color: 'hsl(var(--chart-4))' },
+  completionRate: { label: 'Tingkat Penyelesaian (%)', color: 'hsl(var(--chart-2))' },
+};
+
+const CHART_COLORS = [
+  'hsl(var(--primary))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--muted-foreground))',
+];
+
+export function OwnerDashboard({
+  user,
+  ownerStats,
+  notifications,
+  unreadCount,
+  favorites,
+  milestones,
+  progressPercent,
+  selectedBidsForCompare,
+  chartData,
+  paymentSummary,
+  milestoneBreakdown,
+  allProjectDocuments,
+  onLogout,
+  onShowVerification,
+  onShowCreateProject,
+  onShowCCTV,
+  onShowProgress,
+  onShowCompare,
+  onShowExport,
+  onAcceptBid,
+  onRejectBid,
+  onAddFavorite,
+  onRemoveFavorite,
+  onMarkNotificationRead,
+  onMarkAllRead,
+  onUpdateMilestone,
+  toggleBidSelection,
+  loadMilestones,
+  // Auto-refresh props
+  refreshInterval = '1m',
+  onSetRefreshInterval,
+  lastRefreshed,
+  isRefreshing = false,
+  onRefresh,
+  onShowDispute,
+}: OwnerDashboardProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterDocType, setFilterDocType] = useState('all');
+  const [filterDocProject, setFilterDocProject] = useState('all');
+  const [webcamModalOpen, setWebcamModalOpen] = useState(false);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [filterBidProject, setFilterBidProject] = useState('all');
+  const [sortBidsBy, setSortBidsBy] = useState<'newest' | 'lowest' | 'rating'>('newest');
+
+  // Safe access to projects array
+  const projects = ownerStats?.projects ?? [];
+
+  // Helper function to format last refreshed time
+  const formatLastRefreshed = (date: Date | null | undefined): string => {
+    if (!date) return 'Belum ada data';
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return `${diffInSeconds} detik lalu`;
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return `${minutes} menit lalu`;
+    } else {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return `${hours} jam lalu`;
+    }
+  };
+
+  
+  // Handle document upload from webcam
+  const handleDocumentUpload = async (data: { name: string; type: string; fileUrl: string; fileSize: number }) => {
+    const projectId = filterDocProject !== 'all' ? filterDocProject : projects[0]?.id;
+    if (!projectId) {
+      toast.error('Tidak ada proyek tersedia. Buat proyek terlebih dahulu.');
+      return false;
+    }
+    try {
+      const res = await fetch('/api/owner-documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          uploadedBy: user.id,
+          name: data.name,
+          type: data.type,
+          fileUrl: data.fileUrl,
+          fileSize: data.fileSize,
+        }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        toast.success('Dokumen berhasil diunggah!');
+        window.location.reload();
+        return true;
+      } else {
+        toast.error(result.error || 'Gagal mengunggah dokumen');
+        return false;
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+      return false;
+    }
+  };
+
+  // Memoize chart data transformations
+  const projectCategoryData = useMemo(() => {
+    if (!chartData?.categoryData || chartData.categoryData.length === 0) {
+      return [];
+    }
+    return chartData.categoryData.map((item, idx) => ({
+      name: item.name,
+      value: item.value,
+      fill: CHART_COLORS[idx % CHART_COLORS.length],
+    }));
+  }, [chartData]);
+
+  const monthlyProgressData = useMemo(() => {
+    if (!chartData?.monthlyProgressData || chartData.monthlyProgressData.length === 0) {
+      return [];
+    }
+    return chartData.monthlyProgressData;
+  }, [chartData]);
+
+  // Completion trend data
+  const completionTrend = useMemo(() => {
+    return chartData?.completionTrend || { direction: 'stable', value: 0, avgCompletion: 0 };
+  }, [chartData]);
+
+  // Filter documents
+  const filteredDocuments = useMemo(() => {
+    if (!allProjectDocuments || allProjectDocuments.length === 0) return [];
+    return allProjectDocuments.filter(doc => {
+      if (filterDocType !== 'all' && doc.type !== filterDocType) return false;
+      if (filterDocProject !== 'all' && doc.projectId !== filterDocProject) return false;
+      return true;
+    });
+  }, [allProjectDocuments, filterDocType, filterDocProject]);
+
+  // Calculate real progress for each project
+  const getProjectProgress = (projectId: string) => {
+    const project = projects.find(p => p.id === projectId);
+    if (!project) return 0;
+    if (project.status === 'COMPLETED') return 100;
+    if (project.status === 'IN_PROGRESS') {
+      const completedMilestones = milestones.filter(m => m.status === 'COMPLETED').length;
+      const totalMilestones = milestones.length || 1;
+      return Math.round((completedMilestones / totalMilestones) * 100);
+    }
+    return 0;
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <header className="bg-white sticky top-0 z-40">
+        <div className="relative">
+          {/* Subtle background pattern */}
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(0,0,0,0.02)_1px,transparent_1px),radial-gradient(circle_at_100%_0%,rgba(0,0,0,0.02)_1px,transparent_1px)] bg-[length:20px_20px]" />
+          <div className="relative max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img src="/logo.png" alt="TenderPro" className="h-8 w-auto" />
+              <span className="text-2xl font-bold text-slate-800">TenderPro</span>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Refresh Controls */}
+              <div className="flex items-center gap-2 mr-2">
+                {/* Last refreshed indicator */}
+                <span className="text-xs text-slate-500 hidden sm:inline">
+                  Diperbarui: {formatLastRefreshed(lastRefreshed)}
+                </span>
+                
+                {/* Refresh interval selector */}
+                <Select
+                  value={refreshInterval}
+                  onValueChange={(value) => onSetRefreshInterval?.(value as RefreshInterval)}
+                >
+                  <SelectTrigger className="w-20 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="30s">30s</SelectItem>
+                    <SelectItem value="1m">1m</SelectItem>
+                    <SelectItem value="5m">5m</SelectItem>
+                    <SelectItem value="manual">Manual</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {/* Manual refresh button */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => onRefresh?.()}
+                  disabled={isRefreshing}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+              
+              <div id="tour-notifications">
+              <NotificationBell
+                userId={user.id}
+                onNavigate={(href) => toast.info(`Navigasi ke: ${href}`)}
+              />
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 gap-1.5"
+                onClick={() => onShowDispute?.()}
+              >
+                <AlertTriangle className="h-4 w-4" />
+                <span className="hidden sm:inline">Sengketa</span>
+              </Button>
+              <Button variant="ghost" size="icon" className="relative" onClick={() => setChatModalOpen(true)}>
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+              <div className="text-right hidden sm:block">
+                <p className="font-medium">{user.name}</p>
+                <Badge variant="secondary" className="text-xs font-normal">
+                  <Shield className="h-3 w-3 mr-1" /> Pemilik Proyek
+                </Badge>
+              </div>
+              <Button variant="outline" onClick={onLogout}>
+                <LogOut className="h-4 w-4 mr-2" /> Keluar
+              </Button>
+            </div>
+          </div>
+          {/* Gradient bottom border */}
+          <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <VerificationAlert user={user} onUploadClick={onShowVerification} />
+
+        {/* Welcome Message */}
+        <div className="mb-6" id="tour-welcome">
+          <h2 className="text-xl font-semibold text-slate-800">Selamat datang, {user.name}!</h2>
+          <p className="text-sm text-slate-500 mt-1">Kelola proyek dan pantau progress konstruksi Anda</p>
+        </div>
+
+        {/* Stats Cards */}
+        {!ownerStats ? (
+          <StatsCardsSkeleton />
+        ) : (
+        <div className="grid md:grid-cols-4 gap-4 mb-6" id="tour-stats">
+          <StatsCard
+            label="Total Proyek"
+            value={ownerStats.totalProjects}
+            icon={FolderOpen}
+            trend={ownerStats.trends?.totalProjects?.value || '+0%'}
+            trendUp={ownerStats.trends?.totalProjects?.isUp ?? true}
+            color="primary"
+          />
+          <StatsCard
+            label="Proyek Aktif"
+            value={ownerStats.activeProjects}
+            icon={Building2}
+            trend={ownerStats.trends?.activeProjects?.value || '+0%'}
+            trendUp={ownerStats.trends?.activeProjects?.isUp ?? true}
+            color="blue"
+          />
+          <StatsCard
+            label="Tender Terbuka"
+            value={ownerStats.openProjects}
+            icon={FileText}
+            trend={ownerStats.trends?.openProjects?.value || '+0%'}
+            trendUp={ownerStats.trends?.openProjects?.isUp ?? false}
+            color="yellow"
+          />
+          <StatsCard
+            label="Penawaran Pending"
+            value={ownerStats.totalPendingBids}
+            icon={Clock}
+            trend={ownerStats.trends?.pendingBids?.value || '+0%'}
+            trendUp={ownerStats.trends?.pendingBids?.isUp ?? true}
+            color="purple"
+          />
+        </div>
+        )}
+
+        {/* Quick Actions */}
+        <div className="flex flex-wrap gap-3 mb-6">
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground" onClick={onShowCreateProject}>
+            <Plus className="h-4 w-4 mr-2" /> Buat Proyek Baru
+          </Button>
+          <Button variant="outline" onClick={() => {
+            const bidsTab = document.querySelector('[value="bids"]') as HTMLButtonElement;
+            if (bidsTab) bidsTab.click();
+          }}>
+            <Eye className="h-4 w-4 mr-2" /> Lihat Semua Penawaran
+          </Button>
+          <Button variant="outline" onClick={onShowExport}>
+            <BarChart3 className="h-4 w-4 mr-2" /> Laporan
+          </Button>
+          <Button variant="outline" onClick={() => {
+            const firstInProgress = projects.find(p => p.status === 'IN_PROGRESS');
+            if (firstInProgress) {
+              onShowCCTV({ id: firstInProgress.id, title: firstInProgress.title, status: firstInProgress.status });
+            } else {
+              toast.info('Tidak ada proyek yang sedang berjalan');
+            }
+          }}>
+            <Video className="h-4 w-4 mr-2" /> CCTV Proyek
+          </Button>
+        </div>
+
+        {/* Charts */}
+        {!chartData ? (
+          <ChartSkeleton />
+        ) : (
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          <Card className="shadow-sm hover:shadow-md transition-shadow border">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart2 className="h-5 w-5 text-primary" />
+                Proyek per Kategori
+              </CardTitle>
+              <CardDescription>Distribusi proyek berdasarkan kategori</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {projectCategoryData.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center">
+                  <BarChart2 className="h-10 w-10 text-slate-300 mb-3" />
+                  <p className="text-slate-400 font-medium">Tidak ada data</p>
+                  <p className="text-xs text-slate-400 mt-1">Data akan muncul setelah Anda membuat proyek</p>
+                </div>
+              ) : (
+              <ChartContainer config={chartConfig} className="h-64">
+                <PieChart>
+                  <Pie
+                    data={projectCategoryData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    innerRadius={30}
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    labelLine={false}
+                    className="transition-all duration-500"
+                  >
+                    {projectCategoryData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} stroke="white" strokeWidth={2} />
+                    ))}
+                  </Pie>
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                </PieChart>
+              </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm hover:shadow-md transition-shadow border">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                Progress Bulanan
+              </CardTitle>
+              <CardDescription>Proyek baru vs selesai per bulan</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {monthlyProgressData.length === 0 ? (
+                <div className="h-64 flex flex-col items-center justify-center">
+                  <BarChart3 className="h-10 w-10 text-slate-300 mb-3" />
+                  <p className="text-slate-400 font-medium">Tidak ada data</p>
+                  <p className="text-xs text-slate-400 mt-1">Data akan muncul setelah Anda membuat proyek</p>
+                </div>
+              ) : (
+              <ChartContainer config={chartConfig} className="h-64">
+                <BarChart data={monthlyProgressData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <defs>
+                    <linearGradient id="gradientProyek" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={1} />
+                      <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity={0.6} />
+                    </linearGradient>
+                    <linearGradient id="gradientSelesai" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="hsl(48, 96%, 53%)" stopOpacity={1} />
+                      <stop offset="100%" stopColor="hsl(48, 96%, 53%)" stopOpacity={0.6} />
+                    </linearGradient>
+                  </defs>
+                  <Bar dataKey="proyek" fill="url(#gradientProyek)" radius={[4, 4, 0, 0]} className="transition-all duration-500" />
+                  <Bar dataKey="selesai" fill="url(#gradientSelesai)" radius={[4, 4, 0, 0]} className="transition-all duration-500" />
+                </BarChart>
+              </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+          {/* Main content area - 3/4 width */}
+          <div className="lg:col-span-3 space-y-6" id="tour-main-content">
+            {/* Budget Tracker Widget */}
+            <BudgetTracker userId={user.id} />
+
+            {/* Main Content Tabs */}
+        <Tabs defaultValue="projects" className="w-full">
+          <TabsList className="mb-6 flex flex-wrap">
+            <TabsTrigger value="projects"><FolderOpen className="h-4 w-4 mr-2" /> Proyek Saya</TabsTrigger>
+            <TabsTrigger value="bids"><FileText className="h-4 w-4 mr-2" /> Penawaran Masuk</TabsTrigger>
+            <TabsTrigger value="timeline"><Flag className="h-4 w-4 mr-2" /> Timeline</TabsTrigger>
+            <TabsTrigger value="documents"><FolderOpen className="h-4 w-4 mr-2" /> Dokumen</TabsTrigger>
+            <TabsTrigger value="payments"><DollarSign className="h-4 w-4 mr-2" /> Pembayaran</TabsTrigger>
+            <TabsTrigger value="favorites"><Star className="h-4 w-4 mr-2" /> Favorit</TabsTrigger>
+            <TabsTrigger value="analytics"><BarChart3 className="h-4 w-4 mr-2" /> Analitik</TabsTrigger>
+            <TabsTrigger value="settings"><Settings className="h-4 w-4 mr-2" /> Pengaturan</TabsTrigger>
+          </TabsList>
+
+          {/* Projects Tab */}
+          <TabsContent value="projects">
+            <OwnerProjectsTab
+              ownerStats={ownerStats}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              filterStatus={filterStatus}
+              setFilterStatus={setFilterStatus}
+              onShowCreateProject={onShowCreateProject}
+              onShowCCTV={onShowCCTV}
+              onShowProgress={onShowProgress}
+              onAcceptBid={onAcceptBid}
+              onRejectBid={onRejectBid}
+              loadMilestones={loadMilestones}
+              milestones={milestones}
+            />
+          </TabsContent>
+
+          {/* Bids Tab */}
+          <TabsContent value="bids">
+            <OwnerBidsTab
+              ownerStats={ownerStats}
+              selectedBidsForCompare={selectedBidsForCompare}
+              toggleBidSelection={toggleBidSelection}
+              onShowCompare={onShowCompare}
+              onAcceptBid={onAcceptBid}
+              onRejectBid={onRejectBid}
+              onAddFavorite={onAddFavorite}
+              onShowCCTV={onShowCCTV}
+              onShowProgress={onShowProgress}
+              onShowCreateProject={onShowCreateProject}
+              loadMilestones={loadMilestones}
+              filterBidProject={filterBidProject}
+              setFilterBidProject={setFilterBidProject}
+              sortBidsBy={sortBidsBy}
+              setSortBidsBy={setSortBidsBy}
+            />
+          </TabsContent>
+
+          {/* Favorites Tab */}
+          <TabsContent value="favorites">
+            <OwnerFavoritesTab
+              favorites={favorites}
+              onRemoveFavorite={onRemoveFavorite}
+            />
+          </TabsContent>
+
+          {/* Timeline Tab */}
+          <TabsContent value="timeline">
+            <OwnerTimelineTab
+              ownerStats={ownerStats}
+              onShowCreateProject={onShowCreateProject}
+              onShowCCTV={onShowCCTV}
+              onShowProgress={onShowProgress}
+              onAcceptBid={onAcceptBid}
+              onRejectBid={onRejectBid}
+              loadMilestones={loadMilestones}
+              milestones={milestones}
+            />
+          </TabsContent>
+
+          {/* Documents Tab */}
+          <TabsContent value="documents">
+            <OwnerDocumentsTab
+              ownerStats={ownerStats}
+              allProjectDocuments={allProjectDocuments}
+              filterDocType={filterDocType}
+              setFilterDocType={setFilterDocType}
+              filterDocProject={filterDocProject}
+              setFilterDocProject={setFilterDocProject}
+              webcamModalOpen={webcamModalOpen}
+              setWebcamModalOpen={setWebcamModalOpen}
+              onDocumentUpload={handleDocumentUpload}
+            />
+          </TabsContent>
+
+          {/* Payments Tab */}
+          <TabsContent value="payments">
+            <OwnerPaymentsTab
+              ownerStats={ownerStats}
+              paymentSummary={paymentSummary}
+              milestoneBreakdown={milestoneBreakdown}
+            />
+          </TabsContent>
+
+          {/* Analytics Tab */}
+          <TabsContent value="analytics">
+            <ProjectAnalytics userId={user.id} />
+            <div className="mt-6">
+              <PerformanceCharts userId={user.id} />
+            </div>
+            {milestones.length > 0 && (
+              <div className="mt-6">
+                <MilestoneGantt milestones={milestones.map(m => ({
+                  id: m.id,
+                  title: m.title,
+                  startDate: m.dueDate || m.createdAt || new Date().toISOString(),
+                  endDate: m.completedAt || m.dueDate || new Date().toISOString(),
+                  status: m.status as 'COMPLETED' | 'IN_PROGRESS' | 'PENDING' | 'OVERDUE',
+                  progress: m.status === 'COMPLETED' ? 100 : m.status === 'IN_PROGRESS' ? 50 : 0,
+                }))} title="Timeline Milestone Proyek" />
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings">
+            <SettingsPanel userId={user.id} onLogout={onLogout} />
+          </TabsContent>
+        </Tabs>
+          </div>
+
+          {/* Activity Feed - 1/4 width sidebar */}
+          <div className="lg:col-span-1">
+            <ActivityFeed userId={user.id} />
+          </div>
+        </div>
+
+        {/* Mobile: Activity Feed below main content */}
+        <div className="lg:hidden mb-6">
+          <ActivityFeed userId={user.id} />
+        </div>
+
+        {/* Webcam Upload Modal */}
+        <WebcamUploadModal
+          open={webcamModalOpen}
+          onOpenChange={setWebcamModalOpen}
+          onUpload={handleDocumentUpload}
+          projects={projects}
+        />
+
+        {/* Chat Modal */}
+        <ChatModal
+          open={chatModalOpen}
+          onOpenChange={setChatModalOpen}
+          currentUser={{ id: user.id, name: user.name, avatar: user.avatar }}
+        />
+      </div>
+
+      {/* Footer */}
+      <footer className="bg-slate-900 text-white py-6 text-center text-sm mt-8">
+        <p>© {new Date().getFullYear()} TenderPro. All rights reserved.</p>
+      </footer>
+    </div>
+  );
+}

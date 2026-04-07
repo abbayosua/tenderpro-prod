@@ -24,6 +24,7 @@ import { SimpleStatsCard } from '@/components/shared/StatsCard';
 import { VerificationAlert } from '@/components/shared/VerificationAlert';
 import { PortfolioModal } from '@/components/modals/PortfolioModal';
 import { CertificationModal } from '@/components/modals/CertificationModal';
+import { RatingsModal } from '@/components/modals/RatingsModal';
 import { ChatModal } from '@/components/modals/ChatModal';
 import { QuickActions } from '@/components/dashboards/contractor/QuickActions';
 import { ProfileCompletion } from '@/components/dashboards/contractor/ProfileCompletion';
@@ -97,6 +98,7 @@ export function ContractorDashboard({
   const [portfolioModalOpen, setPortfolioModalOpen] = useState(false);
   const [selectedPortfolio, setSelectedPortfolio] = useState<Portfolio | null>(null);
   const [certificationModalOpen, setCertificationModalOpen] = useState(false);
+  const [ratingsModalOpen, setRatingsModalOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [chatModalOpen, setChatModalOpen] = useState(false);
   const [withdrawConfirmBid, setWithdrawConfirmBid] = useState<{ id: string; title: string } | null>(null);
@@ -396,7 +398,7 @@ export function ContractorDashboard({
               }}
               onUploadPortfolio={handleAddPortfolio}
               onShowCertifications={() => setCertificationModalOpen(true)}
-              onShowRatings={() => toast.info('Fitur rating akan segera tersedia')}
+              onShowRatings={() => setRatingsModalOpen(true)}
             />
           </div>
         )}
@@ -1149,6 +1151,13 @@ export function ContractorDashboard({
         onOpenChange={setCertificationModalOpen}
         userId={user.id}
         onSuccess={() => {}}
+      />
+
+      {/* Ratings Modal */}
+      <RatingsModal
+        open={ratingsModalOpen}
+        onOpenChange={setRatingsModalOpen}
+        userId={user.id}
       />
 
       {/* Chat Modal */}

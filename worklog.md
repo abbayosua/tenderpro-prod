@@ -3534,3 +3534,182 @@ interface BiddingCenterProps {
 
 **Verification:**
 - ESLint: 0 errors, 0 warnings
+---
+## Task ID: Round 11 - Bug Fix Sprint
+Agent: Main Agent
+Task: Fix 5 user-reported bugs and add new features
+
+### Work Summary
+
+**Bug Fix 1: Demo Account Login Not Working**
+- Root cause: Prisma schema declared `provider = "postgresql"` but `.env` pointed to SQLite (`file:./db/custom.db`)
+- Fixed: Changed schema to `provider = "sqlite"`, removed `directUrl`, removed all `@db.Text` annotations (not supported in SQLite), removed `map:` from 3 `@relation` fields (not supported in SQLite)
+- Fixed: Auth store `login()` now returns `{ success, message }` instead of just `boolean`, so backend error messages ("Email tidak ditemukan", "Password salah") propagate to frontend toast
+- Fixed: Demo button in LoginModal now auto-submits the form using `formRef.current?.requestSubmit()` after filling credentials
+- Seeded database with 3 users, 4 projects, 6 milestones, 5 bids, 2 reviews, 2 certifications, 3 notifications, 2 badges
+- Demo accounts: budi.santoso@propertydev.co.id (Owner), ahmad.wijaya@karyamandiri.co.id (Contractor), siti.nurhaliza@bangunpermai.co.id (Contractor) — all password: demo123
+
+**Bug Fix 2: Aksi Cepat Buttons Broken**
+- "Cari Proyek Baru" targeted `[value="tender"]` → fixed to `[value="available"]`
+- "Lihat Penawaran Saya" targeted `[value="bids"]` (nonexistent) → fixed to `[value="tender"]`
+- "Update Profil" showed toast → now switches to Settings tab
+- "Lihat Sertifikasi" showed toast → now opens CertificationModal
+- "Cek Rating" still shows toast (will be enhanced in future round)
+
+**Bug Fix 3: Chat Overflow**
+- Root cause: CSS flexbox `min-height: auto` prevented ScrollArea from constraining height
+- Fixed: Added `min-h-0` to ScrollArea and `overflow-hidden` to parent container in ChatModal.tsx
+
+**Bug Fix 4: Sertifikasi Lengkapi Button Not Working**
+- Root cause: No CertificationModal component existed; the button just showed a "coming soon" toast
+- Created `src/components/modals/CertificationModal.tsx` with two tabs:
+  - "Tambah Sertifikasi": Form with type selector (SIUJK/SBU/SKA/SKT/ISO/etc), number, issuer, dates, file URL
+  - "Sertifikasi Saya": Lists existing certifications with verified status, expiry warnings
+- Wired into ContractorDashboard: ProfileCompletion onAction, QuickActions onShowCertifications
+- API already existed at `/api/certifications` (GET/POST)
+
+**Bug Fix 5: Route Conflict**
+- Removed duplicate `/api/projects/[projectId]/chat/` that conflicted with `/api/projects/[id]/chat/`
+- Next.js Turbopack was throwing: "You cannot use different slug names for the same dynamic path"
+
+**New Feature: BiddingCenter (Pusat Lelang)**
+- Created `src/components/dashboards/contractor/BiddingCenter.tsx` (~900 lines)
+- Two internal tabs: "Cari Proyek" and "Penawaran Saya"
+- Project discovery sidebar with search, category filters, budget filters, sort options
+- Project detail panel with full info, bid statistics
+- AI Bid Assistant integration (calls `/api/ai/bid-assistant`)
+- Sophisticated bid form with Rupiah formatting, budget comparison bar, proposal templates
+- My Bids management with status filtering, expandable detail view, withdraw functionality
+- Added as new "Pusat Lelang" tab in Contractor Dashboard
+
+**Files Created (2):**
+- `src/components/modals/CertificationModal.tsx`
+- `src/components/dashboards/contractor/BiddingCenter.tsx`
+
+**Files Modified (7):**
+- `prisma/schema.prisma` (SQLite provider, removed @db.Text, removed map: from relations)
+- `prisma/seed.ts` (fixed unique constraint on reviews)
+- `.env` (DATABASE_URL=file:./db/custom.db)
+- `src/lib/auth-store.ts` (login returns {success, message})
+- `src/components/modals/LoginModal.tsx` (auto-submit demo button)
+- `src/components/modals/ChatModal.tsx` (overflow fix)
+- `src/components/dashboards/ContractorDashboard.tsx` (tab fixes, CertificationModal, BiddingCenter, Gavel import)
+- `src/app/page.tsx` (handleLogin uses result.message)
+- Deleted: `src/app/api/projects/[projectId]/` (route conflict)
+
+**Verification:**
+- ESLint: 0 errors, 0 warnings
+- Next.js compilation: successful (Ready in 628ms)
+- Dev server: GET / 200 OK
+- Database: Seeded with full demo data
+- Git: Pushed as 024f558 to master
+
+### Demo Accounts
+| Role | Email | Password |
+|------|-------|----------|
+| Pemilik Proyek | budi.santoso@propertydev.co.id | demo123 |
+| Kontraktor | ahmad.wijaya@karyamandiri.co.id | demo123 |
+| Kontraktor | siti.nurhaliza@bangunpermai.co.id | demo123 |
+---
+## Task ID: settings-panel-enhance - ui-enhancement-specialist
+### Work Task
+Enhance the Settings Panel in the TenderPro contractor dashboard with section headers, contractor profile form fields, password section, notification preferences, and polished styling.
+
+### Work Summary
+All 11 requirements implemented successfully in `src/components/dashboards/SettingsPanel.tsx`. ESLint: 0 errors. Dev server compiles and serves correctly.
+
+**1. Section Headers with Colored Left Borders**
+- Created reusable `SectionHeader` component matching PortfolioModal/CertificationModal pattern
+- Uses `<div className="w-1 h-4 bg-{color} rounded-full" />` for colored left border accent
+- Color-coded sections: primary (Data Pribadi), teal-500 (Data Perusahaan), amber-500 (Alamat & Legalitas), red-500 (Keamanan Akun), violet-500 (Tampilan & Bahasa)
+
+**2. Contractor Profile Form Fields**
+- Added editable fields: company name, company type (PT/CV/Firma/PO/Koperasi/BUMN via Select), phone, specialization, description (Textarea), address, city, province, NPWP, NIB
+- Created reusable `FormField` component with icon + label + hint support
+- Company data and legal data sections only shown for contractor role
+- Profile save now includes contractor object with all new fields
+
+**3. Simpan Perubahan Button**
+- Gradient button: `from-primary to-teal-600` with shadow and hover scale effect
+- Calls PUT `/api/user/settings` with both personal and contractor data
+- Loading state with spinner, cancel button to reset form
+
+**4. Ubah Password Section**
+- Redesigned with gradient icon header and Keamanan Akun section header
+- Password strength indicator (3 progress bars: length, uppercase, numbers)
+- Real-time password match validation with Check/AlertTriangle feedback
+- Warning about re-login requirement after password change
+- Gradient red-to-amber button for submission
+
+**5. Notification Preferences Toggles**
+- Organized into 2 sections: "Kanal Notifikasi" (Email, Push, SMS) and "Jenis Notifikasi" (Update Proyek, Penawaran Baru, Marketing & Promo)
+- 6 total toggle switches, each with color-coded icon containers
+- Hover effect on toggle rows (subtle background change)
+
+**6. shadcn/ui Components Used**
+- Card, Button, Input, Label, Textarea, Select, Switch, Separator, Badge, Avatar, Dialog, SelectContent, SelectItem, SelectTrigger, SelectValue
+
+**7. Framer-Motion Animations**
+- `staggerContainer` and `staggerItem` variants for card entrance
+- Tab navigation items have staggered fade-in (0.04s delay each)
+- Password validation messages animate in/out with `fadeInUp`
+- `AnimatePresence mode="wait"` for tab transitions
+
+**8. Lucide-React Icons**
+- Settings, User, Building2, Shield, Bell, Lock, Save, Check, Phone, MapPin, FileText (all used)
+
+**9. Bahasa Indonesia**
+- All labels, descriptions, hints, and validation messages in Bahasa Indonesia
+
+**10. Polished Styling**
+- All inputs: `h-11 border-slate-200 focus-visible:ring-primary/20 focus-visible:border-primary/40 transition-all duration-200`
+- Cards: `border border-slate-100 shadow-sm hover:shadow-md transition-shadow duration-300`
+- Avatar: ring-4 ring-primary/10 shadow-lg with gradient fallback
+- Tab buttons: active state with `shadow-sm shadow-primary/20`
+
+**11. File Modified Only**
+- Only `src/components/dashboards/SettingsPanel.tsx` was modified (no new files created)
+
+**Verification:**
+- ESLint: 0 errors, 0 warnings
+- Dev server: compiled successfully (GET / 200 OK)
+---
+## Task ID: 8 - full-stack-developer
+### Work Task
+Create RatingsModal component for contractors to view their ratings and reviews from project owners, and enhance the /api/ratings endpoint to support the new modal.
+
+### Work Summary
+Created RatingsModal component and enhanced the /api/ratings API route. All files pass ESLint with 0 errors.
+
+**1. Enhanced `/api/ratings/route.ts`**
+- Added support for `userId` query parameter (alias for `contractorId`), so the endpoint can be called as `GET /api/ratings?userId={userId}`
+- Added `fromUser` relation include with name, avatar, isVerified, and owner.companyName
+- Added `project` relation include with id, title, and category
+- Returns `reviews` array with formatted individual review data alongside existing aggregate data (averageRating, totalReviews, breakdown, categoryAverages)
+
+**2. Created `src/components/modals/RatingsModal.tsx`**
+- Props: `{ open: boolean; onOpenChange: (open: boolean) => void; userId: string; }`
+- Fetches data from `GET /api/ratings?userId={userId}` on modal open
+- Dark gradient header (slate-800 → slate-950) with Award icon, dot pattern overlay, and decorative blur elements, consistent with CertificationModal styling
+- Header shows review count badge when reviews exist
+- Overall rating section: large animated rating number (spring animation), star visualization, rating label badge (Luar Biasa/Sangat Baik/Baik/Cukup/Kurang/Perlu Perbaikan), and animated star distribution bars (5→1 stars with gradient progress bars)
+- Category breakdown: 3 color-coded cards (Profesionalisme=blue, Kualitas=emerald, Ketepatan Waktu=amber) each with gradient icon container, numeric value, and mini star rating
+- Individual reviews list with: reviewer avatar/name (with verified badge), company name, rating badge, project title + category, quoted review text, per-review category star ratings, relative timestamp
+- Empty state with Star icon, descriptive text, and feature icons
+- Loading state with spinner
+- All framer-motion animations (staggered entrance, hover effects, animated bars)
+- Read-only view (no editing capabilities)
+- Uses shadcn/ui: Dialog, Badge, Button, Card, CardContent, ScrollArea, Separator
+- Uses lucide-react: Star, Award, MessageSquare, Clock, User, ThumbsUp, ShieldCheck, CheckCircle, Loader2
+- All text in Bahasa Indonesia
+- max-h-[400px] scrollable reviews with overflow-y-auto
+
+**Files Modified (1 updated):**
+- `src/app/api/ratings/route.ts` (enhanced with userId param, reviewer/project includes, formatted reviews)
+
+**Files Created (1 new):**
+- `src/components/modals/RatingsModal.tsx`
+
+**Verification:**
+- ESLint: 0 errors on new/modified files
+- Dev server: compiled successfully
